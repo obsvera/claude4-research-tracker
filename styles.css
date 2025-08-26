@@ -182,6 +182,7 @@ textarea {
     background: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
+    text-align: center; /* This will center content when empty */
 }
 
 .summary-header {
@@ -205,6 +206,7 @@ textarea {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 20px;
+    text-align: inherit; /* Inherit centering from parent when empty */
 }
 
 .paper-card {
@@ -214,6 +216,7 @@ textarea {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     border-left: 4px solid #4a90e2;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-align: left; /* Reset text alignment for actual paper cards */
 }
 
 .paper-card:hover {
