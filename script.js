@@ -251,49 +251,93 @@ async function addFromSmartInput() {
         return;
     }
 
-    const button = document.getElementById('dataBtn');
-    const originalText = button.innerHTML;
-    button.innerHTML = '<span class="loading-spinner"></span>Processing...';
-    button.disabled = true;
-
+    // Check if input is already valid JSON
     try {
-        // Check if input is already valid JSON
-        let paperInfo;
-        try {
-            paperInfo = JSON.parse(input);
-            showPreviewModal(paperInfo);
-            return;
-        } catch (e) {
-            // Not JSON, proceed with smart processing
-        }
-
-        // Detect input type and process accordingly
-        const inputType = detectInputType(input);
-        console.log('Detected input type:', inputType, 'for input:', input);
-
-        let extractedInfo;
-        if (inputType === 'url' || inputType === 'doi') {
-            // Try to fetch from URL/DOI first, then fallback to Claude
-            try {
-                extractedInfo = await extractFromUrlOrDoi(input);
-            } catch (error) {
-                console.log('URL/DOI fetch failed, trying Claude extraction:', error.message);
-                extractedInfo = await extractWithClaude(input);
-            }
-        } else {
-            // For titles, citations, etc., go straight to Claude
-            extractedInfo = await extractWithClaude(input);
-        }
-
-        showPreviewModal(extractedInfo);
-
-    } catch (error) {
-        console.error('Smart input processing failed:', error);
-        alert('❌ Could not process the input. Please check the format or try a different approach.');
-    } finally {
-        button.innerHTML = originalText;
-        button.disabled = false;
+        const paperInfo = JSON.parse(input);
+        showPreviewModal(paperInfo);
+        return;
+    } catch (e) {
+        // Not JSON, show Claude prompt
+        showClaudePrompt(input);
     }
+}
+
+// Show Claude prompt for user to copy
+function showClaudePrompt(input) {
+    const prompt = `I'm using a Research Paper Tracker app and need you to extract paper information. The user provided: "${input}"
+
+Please analyze this and return the information in this exact JSON format:
+
+{
+  "title": "Full paper title",
+  "authors": "Author names in APA format (Last, F. M., Last, F. M., & Last, F. M.)",
+  "year": "Publication year",
+  "journal": "Journal or venue name",
+  "keywords": "keyword1, keyword2, keyword3, keyword4",
+  "abstract": "Key findings, methodology, and main contributions in 2-3 sentences",
+  "url": "DOI link or paper URL",
+  "relevance": "Why this paper might be relevant to research (1-2 sentences)"
+}
+
+Please ensure the JSON is properly formatted and fill in as much information as possible. If you cannot find certain fields, use empty strings but keep the JSON structure intact.`;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">📋 Copy This Prompt to Claude</h3>
+                <button class="modal-close" onclick="closeClaudePromptModal()">&times;</button>
+            </div>
+            <div class="modal-content">
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Copy the prompt below, paste it into your Claude chat, then copy the JSON response back into the input field.
+                </p>
+                <div class="modal-field">
+                    <textarea id="claude-prompt" readonly style="min-height: 300px; font-family: monospace; font-size: 13px; background: #f8f9fa;">${prompt}</textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closeClaudePromptModal()">Close</button>
+                <button class="modal-btn modal-btn-primary" onclick="copyClaudePrompt()">📋 Copy Prompt</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Focus and select the textarea
+    setTimeout(() => {
+        const textarea = document.getElementById('claude-prompt');
+        textarea.focus();
+        textarea.select();
+    }, 100);
+}
+
+// Close Claude prompt modal
+function closeClaudePromptModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+// Copy Claude prompt to clipboard
+function copyClaudePrompt() {
+    const textarea = document.getElementById('claude-prompt');
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Show feedback
+    const button = document.querySelector('.modal-btn-primary');
+    const originalText = button.innerHTML;
+    button.innerHTML = '✅ Copied!';
+    button.style.background = '#28a745';
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.background = '#4a90e2';
+    }, 2000);
 }
 
 // Detect what type of input the user provided
