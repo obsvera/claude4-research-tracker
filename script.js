@@ -15,8 +15,11 @@ function showSummary() {
     }
     
     if (papers.length === 0) {
-        summaryContainer.innerHTML = '<div style="width: 100%; text-align: center; color: #888; font-style: italic; padding: 40px; margin: 0 auto;">No papers added yet. Add some papers to see them here!</div>';
+        summaryContainer.style.textAlign = 'center';
+        summaryContainer.innerHTML = '<div style="color: #888; font-style: italic; padding: 40px;">No papers added yet. Add some papers to see them here!</div>';
         return;
+    } else {
+        summaryContainer.style.textAlign = 'left'; // Reset for paper cards
     }
     
     // Generate summary cards
