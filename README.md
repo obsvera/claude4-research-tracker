@@ -52,6 +52,106 @@ A comprehensive web application for organizing dissertation research, tracking a
 3. Citation will auto-generate as you type
 
 #### From Extracted Data
+# 📄 Paper Extraction Prompt for Claude
+
+Copy and paste this prompt when chatting with Claude to extract paper information for your Research Paper Tracker:
+
+---
+
+## 🤖 **Prompt Template**
+
+```
+I'm using a Research Paper Tracker app and need you to extract paper information. Please analyze this paper [URL/title/content] and return the information in this exact JSON format:
+
+{
+  "title": "Full paper title",
+  "authors": "Author names in APA format (Last, F. M., Last, F. M., & Last, F. M.)",
+  "year": "Publication year",
+  "journal": "Journal or venue name",
+  "keywords": "keyword1, keyword2, keyword3, keyword4",
+  "abstract": "Key findings, methodology, and main contributions in 2-3 sentences",
+  "url": "DOI link or paper URL",
+  "relevance": "Why this paper might be relevant to research (1-2 sentences)"
+}
+
+Please ensure the JSON is properly formatted so I can copy-paste it directly into my tracker.
+```
+
+---
+
+## 📝 **Example Usage**
+
+### For a URL:
+> I'm using a Research Paper Tracker app and need you to extract paper information. Please analyze this paper https://arxiv.org/abs/1706.03762 and return the information in this exact JSON format: [format above]
+
+### For a Paper Title:
+> I'm using a Research Paper Tracker app and need you to extract paper information. Please analyze the paper "Attention Is All You Need" by Vaswani et al. and return the information in this exact JSON format: [format above]
+
+### For Multiple Papers:
+> I'm using a Research Paper Tracker app and need you to extract information from these papers: [list of URLs or titles]. Please return each paper in the exact JSON format: [format above]. Put each JSON object on a separate line so I can add them individually.
+
+---
+
+## 🎯 **Tips for Best Results**
+
+### What Works Well:
+- ✅ **Direct URLs** (ArXiv, DOI links, journal pages)
+- ✅ **Full paper titles** with author names
+- ✅ **Specific requests** ("focus on methodology" or "emphasize relevance to machine learning")
+- ✅ **One paper at a time** for accuracy
+
+### What to Include in Your Request:
+- 🎓 **Your research area** ("I'm studying natural language processing")
+- 📚 **Your focus** ("for my dissertation on transformer architectures")
+- 🔍 **Specific interests** ("emphasize computational efficiency aspects")
+
+---
+
+## 🔧 **Troubleshooting**
+
+### If Claude Can't Access the URL:
+> "I'm using a Research Paper Tracker app. I have a paper titled '[Title]' by [Authors] from [Year]. Can you help me format the information in this JSON structure: [format above]. Here are the details I have: [paste any info you have]"
+
+### If JSON Formatting Issues:
+> "Please reformat that as valid JSON that I can copy-paste directly, starting with { and ending with }"
+
+### For Batch Processing:
+> "Please provide each paper as a separate, complete JSON object that I can copy individually"
+
+---
+
+## 📋 **Quick Copy-Paste Version**
+
+```
+Extract paper info for my Research Paper Tracker in this JSON format:
+{
+  "title": "",
+  "authors": "",
+  "year": "",
+  "journal": "",
+  "keywords": "",
+  "abstract": "",
+  "url": "",
+  "relevance": ""
+}
+
+Paper: [PASTE URL OR TITLE HERE]
+```
+
+---
+
+## 🚀 **Pro Tips**
+
+1. **Start simple**: Try with one well-known paper first
+2. **Be specific**: Mention your research area for better relevance notes
+3. **Check format**: Make sure you can copy the JSON cleanly
+4. **Batch smartly**: Do 3-5 papers at a time for best results
+5. **Review results**: Double-check author formatting and details
+
+---
+
+**Happy researching! This prompt will help you quickly build your paper library with properly formatted citations and relevant notes.**
+
 1. Get paper information in JSON format:
    ```json
    {
