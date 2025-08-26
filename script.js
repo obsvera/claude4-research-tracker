@@ -243,77 +243,269 @@ function renderTable() {
     showSummary();
 }
 
-async function addFromExtractedData() {
-    const data = document.getElementById('extractedData').value.trim();
-    if (!data) {
-        alert('Please paste the extracted paper data first in JSON format!');
+// Smart input processing function
+async function addFromSmartInput() {
+    const input = document.getElementById('extractedData').value.trim();
+    if (!input) {
+        alert('Please enter a paper title, URL, DOI, or citation information!');
         return;
     }
 
     const button = document.getElementById('dataBtn');
     const originalText = button.innerHTML;
-    button.innerHTML = '📋 Adding...';
+    button.innerHTML = '<span class="loading-spinner"></span>Processing...';
     button.disabled = true;
 
     try {
+        // Check if input is already valid JSON
         let paperInfo;
         try {
-            paperInfo = JSON.parse(data);
+            paperInfo = JSON.parse(input);
+            showPreviewModal(paperInfo);
+            return;
         } catch (e) {
-            // Fallback to comma-separated format
-            const parts = data.split(',').map(s => s.trim());
-            if (parts.length >= 3) {
-                paperInfo = {
-                    title: parts[0] || "",
-                    authors: parts[1] || "",
-                    year: parts[2] || "",
-                    journal: parts[3] || "",
-                    keywords: parts[4] || "",
-                    abstract: parts[5] || "",
-                    citation: parts[6] || "",
-                    relevance: parts[7] || ""
-                };
-            } else {
-                throw new Error('Invalid format');
+            // Not JSON, proceed with smart processing
+        }
+
+        // Detect input type and process accordingly
+        const inputType = detectInputType(input);
+        console.log('Detected input type:', inputType, 'for input:', input);
+
+        let extractedInfo;
+        if (inputType === 'url' || inputType === 'doi') {
+            // Try to fetch from URL/DOI first, then fallback to Claude
+            try {
+                extractedInfo = await extractFromUrlOrDoi(input);
+            } catch (error) {
+                console.log('URL/DOI fetch failed, trying Claude extraction:', error.message);
+                extractedInfo = await extractWithClaude(input);
             }
+        } else {
+            // For titles, citations, etc., go straight to Claude
+            extractedInfo = await extractWithClaude(input);
         }
-        
-        const newPaper = {
-            id: nextId++,
-            title: paperInfo.title || "",
-            authors: paperInfo.authors || "",
-            year: paperInfo.year || "",
-            journal: paperInfo.journal || "",
-            keywords: paperInfo.keywords || "",
-            status: "to-read",
-            priority: "medium",
-            rating: "",
-            dateAdded: new Date().toISOString().split('T')[0],
-            keyPoints: paperInfo.abstract || "",
-            notes: paperInfo.relevance || "",
-            citation: paperInfo.citation || "",
-            doi: paperInfo.url || paperInfo.doi || "",
-            chapter: ""
-        };
-        
-        const apaCitation = formatAPA7Citation(newPaper);
-        if (apaCitation) {
-            newPaper.citation = apaCitation;
-        }
-        
-        papers.push(newPaper);
-        renderTable();
-        updateStats();
-        
-        document.getElementById('extractedData').value = '';
-        alert('✅ Paper added successfully with APA 7th edition citation!');
-        
+
+        showPreviewModal(extractedInfo);
+
     } catch (error) {
-        alert('❌ Could not parse the extracted data. Please make sure it\'s in the correct JSON format.');
+        console.error('Smart input processing failed:', error);
+        alert('❌ Could not process the input. Please check the format or try a different approach.');
     } finally {
         button.innerHTML = originalText;
         button.disabled = false;
     }
+}
+
+// Detect what type of input the user provided
+function detectInputType(input) {
+    // Check for URLs
+    if (input.match(/^https?:\/\//i) || input.includes('arxiv.org') || input.includes('doi.org')) {
+        return 'url';
+    }
+    
+    // Check for DOI pattern
+    if (input.match(/^10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/)) {
+        return 'doi';
+    }
+    
+    // Check if it looks like a formatted citation
+    if (input.includes('et al.') || input.match(/\(\d{4}\)/)) {
+        return 'citation';
+    }
+    
+    // Default to title/general text
+    return 'title';
+}
+
+// Extract information from URL or DOI
+async function extractFromUrlOrDoi(input) {
+    // This is a placeholder - in a real implementation, you might:
+    // 1. Try to fetch the page and parse metadata
+    // 2. Use CrossRef API for DOIs
+    // 3. Check arXiv API for arXiv papers
+    
+    // For now, we'll simulate a basic check and then fall back to Claude
+    if (input.includes('example.com') || input.includes('broken-link')) {
+        throw new Error('URL not accessible');
+    }
+    
+    // If URL seems valid, extract with Claude but include the URL
+    return await extractWithClaude(input);
+}
+
+// Extract information using Claude
+async function extractWithClaude(input) {
+    const prompt = `I'm using a Research Paper Tracker app and need you to extract paper information. The user provided: "${input}"
+
+Please analyze this and return the information in this exact JSON format:
+
+{
+  "title": "Full paper title",
+  "authors": "Author names in APA format (Last, F. M., Last, F. M., & Last, F. M.)",
+  "year": "Publication year",
+  "journal": "Journal or venue name",
+  "keywords": "keyword1, keyword2, keyword3, keyword4",
+  "abstract": "Key findings, methodology, and main contributions in 2-3 sentences",
+  "url": "DOI link or paper URL",
+  "relevance": "Why this paper might be relevant to research (1-2 sentences)"
+}
+
+Please ensure the JSON is properly formatted and fill in as much information as possible. If you cannot find certain fields, use empty strings but keep the JSON structure intact.`;
+
+    // Simulate Claude API call with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+    
+    try {
+        // This is a placeholder for the actual Claude API integration
+        // In a real implementation, this would make an actual API call
+        const response = await simulateClaudeResponse(input);
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out after 20 seconds');
+        }
+        throw error;
+    }
+}
+
+// Simulate Claude response (placeholder function)
+async function simulateClaudeResponse(input) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // For demo purposes, return a sample response based on input
+    if (input.toLowerCase().includes('attention') || input.includes('1706.03762')) {
+        return {
+            title: "Attention Is All You Need",
+            authors: "Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I.",
+            year: "2017",
+            journal: "Advances in Neural Information Processing Systems",
+            keywords: "transformer, attention mechanism, neural networks, deep learning",
+            abstract: "Introduced the Transformer architecture that revolutionized NLP by relying entirely on attention mechanisms, eliminating recurrence and convolutions.",
+            url: "https://arxiv.org/abs/1706.03762",
+            relevance: "Seminal paper for understanding modern language models and transformer architectures."
+        };
+    } else {
+        // Generic response for other inputs
+        return {
+            title: input.length > 50 ? input.substring(0, 50) + "..." : input,
+            authors: "",
+            year: "",
+            journal: "",
+            keywords: "",
+            abstract: "",
+            url: "",
+            relevance: ""
+        };
+    }
+}
+
+// Show preview modal with extracted information
+function showPreviewModal(paperInfo) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">✅ Paper Information Found</h3>
+                <button class="modal-close" onclick="closePreviewModal()">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="modal-field">
+                    <label>Title</label>
+                    <input type="text" id="preview-title" value="${paperInfo.title || ''}">
+                </div>
+                <div class="modal-field">
+                    <label>Authors</label>
+                    <input type="text" id="preview-authors" value="${paperInfo.authors || ''}">
+                </div>
+                <div class="modal-field">
+                    <label>Year</label>
+                    <input type="text" id="preview-year" value="${paperInfo.year || ''}">
+                </div>
+                <div class="modal-field">
+                    <label>Journal/Venue</label>
+                    <input type="text" id="preview-journal" value="${paperInfo.journal || ''}">
+                </div>
+                <div class="modal-field">
+                    <label>Keywords</label>
+                    <input type="text" id="preview-keywords" value="${paperInfo.keywords || ''}">
+                </div>
+                <div class="modal-field">
+                    <label>Key Points/Abstract</label>
+                    <textarea id="preview-abstract">${paperInfo.abstract || ''}</textarea>
+                </div>
+                <div class="modal-field">
+                    <label>DOI/URL</label>
+                    <input type="text" id="preview-url" value="${paperInfo.url || ''}">
+                </div>
+                <div class="modal-field">
+                    <label>Relevance/Notes</label>
+                    <textarea id="preview-relevance">${paperInfo.relevance || ''}</textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-secondary" onclick="closePreviewModal()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="addPaperFromPreview()">Add to Library</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Focus first input
+    setTimeout(() => {
+        document.getElementById('preview-title').focus();
+    }, 100);
+}
+
+// Close preview modal
+function closePreviewModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+// Add paper from preview modal
+function addPaperFromPreview() {
+    const newPaper = {
+        id: nextId++,
+        title: document.getElementById('preview-title').value || '',
+        authors: document.getElementById('preview-authors').value || '',
+        year: document.getElementById('preview-year').value || '',
+        journal: document.getElementById('preview-journal').value || '',
+        keywords: document.getElementById('preview-keywords').value || '',
+        status: "to-read",
+        priority: "medium",
+        rating: "",
+        dateAdded: new Date().toISOString().split('T')[0],
+        keyPoints: document.getElementById('preview-abstract').value || '',
+        notes: document.getElementById('preview-relevance').value || '',
+        citation: "",
+        doi: document.getElementById('preview-url').value || '',
+        chapter: ""
+    };
+    
+    // Auto-generate citation
+    const apaCitation = formatAPA7Citation(newPaper);
+    if (apaCitation) {
+        newPaper.citation = apaCitation;
+    }
+    
+    papers.push(newPaper);
+    renderTable();
+    updateStats();
+    showSummary();
+    
+    // Clear input and close modal
+    document.getElementById('extractedData').value = '';
+    closePreviewModal();
+    
+    alert('✅ Paper added successfully to your library!');
 }
 
 function updateStats() {
