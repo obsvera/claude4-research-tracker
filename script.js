@@ -15,11 +15,15 @@ function showSummary() {
     }
     
     if (papers.length === 0) {
-        summaryContainer.style.textAlign = 'center';
+        summaryContainer.style.display = 'flex';
+        summaryContainer.style.justifyContent = 'center';
+        summaryContainer.style.alignItems = 'center';
         summaryContainer.innerHTML = '<div style="color: #888; font-style: italic; padding: 40px;">No papers added yet. Add some papers to see them here!</div>';
         return;
     } else {
-        summaryContainer.style.textAlign = 'left'; // Reset for paper cards
+        summaryContainer.style.display = 'grid';
+        summaryContainer.style.justifyContent = '';
+        summaryContainer.style.alignItems = '';
     }
     
     // Generate summary cards
