@@ -254,11 +254,13 @@ async function addFromSmartInput() {
     // Check if input is already valid JSON
     try {
         const paperInfo = JSON.parse(input);
+        // Valid JSON - show preview modal
         showPreviewModal(paperInfo);
         return;
     } catch (e) {
-        // Not JSON, show Claude prompt
+        // Not JSON - show Claude prompt instead
         showClaudePrompt(input);
+        return;
     }
 }
 
