@@ -376,8 +376,23 @@ async function simulateClaudeResponse(input) {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // For demo purposes, return a sample response based on input
-    if (input.toLowerCase().includes('attention') || input.includes('1706.03762')) {
+    // For demo purposes, parse and extract information from the input
+    const lowerInput = input.toLowerCase();
+    
+    // Try to extract information from various input formats
+    let extractedInfo = {
+        title: "",
+        authors: "",
+        year: "",
+        journal: "",
+        keywords: "",
+        abstract: "",
+        url: "",
+        relevance: ""
+    };
+    
+    // Handle specific known papers
+    if (lowerInput.includes('attention') && lowerInput.includes('need') || input.includes('1706.03762')) {
         return {
             title: "Attention Is All You Need",
             authors: "Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I.",
@@ -388,19 +403,83 @@ async function simulateClaudeResponse(input) {
             url: "https://arxiv.org/abs/1706.03762",
             relevance: "Seminal paper for understanding modern language models and transformer architectures."
         };
-    } else {
-        // Generic response for other inputs
-        return {
-            title: input.length > 50 ? input.substring(0, 50) + "..." : input,
-            authors: "",
-            year: "",
-            journal: "",
-            keywords: "",
-            abstract: "",
-            url: "",
-            relevance: ""
-        };
     }
+    
+    // Try to parse citation-like input
+    const yearMatch = input.match(/\((\d{4})\)|\b(\d{4})\b/);
+    if (yearMatch) {
+        extractedInfo.year = yearMatch[1] || yearMatch[2];
+    }
+    
+    // Extract potential journal information
+    const journalPatterns = [
+        /Academy of Management/i,
+        /Management Review/i,
+        /Strategic Management/i,
+        /Nature/i,
+        /Science/i,
+        /Journal of/i,
+        /Proceedings of/i
+    ];
+    
+    for (const pattern of journalPatterns) {
+        const match = input.match(pattern);
+        if (match) {
+            extractedInfo.journal = match[0];
+            break;
+        }
+    }
+    
+    // Try to extract title (remove journal info if found)
+    let cleanTitle = input;
+    if (extractedInfo.journal) {
+        cleanTitle = input.replace(new RegExp(extractedInfo.journal, 'gi'), '').trim();
+    }
+    
+    // Clean up title by removing year, volume, issue info
+    cleanTitle = cleanTitle.replace(/\(\d{4}\)/g, '').replace(/\b\d{4}\b/, '');
+    cleanTitle = cleanTitle.replace(/Vol\.\s*\d+/gi, '').replace(/No\.\s*\d+/gi, '');
+    cleanTitle = cleanTitle.replace(/,\s*$/, '').trim();
+    
+    if (cleanTitle && cleanTitle.length > 3) {
+        extractedInfo.title = cleanTitle;
+    } else {
+        extractedInfo.title = input.substring(0, 100); // Fallback
+    }
+    
+    // Generate some basic keywords based on the input
+    const commonKeywords = {
+        'management': ['management', 'leadership', 'organization'],
+        'strategy': ['strategy', 'competitive advantage', 'business model'],
+        'technology': ['technology', 'innovation', 'digital transformation'],
+        'learning': ['machine learning', 'artificial intelligence', 'data science'],
+        'neural': ['neural networks', 'deep learning', 'AI'],
+        'social': ['social networks', 'sociology', 'social science']
+    };
+    
+    let suggestedKeywords = [];
+    for (const [key, keywords] of Object.entries(commonKeywords)) {
+        if (lowerInput.includes(key)) {
+            suggestedKeywords = suggestedKeywords.concat(keywords);
+            break;
+        }
+    }
+    
+    if (suggestedKeywords.length === 0) {
+        suggestedKeywords = ['research', 'academic study', 'analysis'];
+    }
+    
+    extractedInfo.keywords = suggestedKeywords.slice(0, 4).join(', ');
+    
+    // Add a generic relevance note
+    extractedInfo.relevance = "This paper may be relevant to your research area. Please review and update the relevance notes as needed.";
+    
+    // If it looks like a URL, preserve it
+    if (input.match(/^https?:\/\//)) {
+        extractedInfo.url = input;
+    }
+    
+    return extractedInfo;
 }
 
 // Show preview modal with extracted information
