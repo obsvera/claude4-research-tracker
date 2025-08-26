@@ -205,6 +205,7 @@ textarea {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
     gap: 20px;
+    text-align: center; /* Center content when grid is empty */
 }
 
 .paper-card {
