@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Paper Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Research Paper Tracker</h1>
+            <p>Organize your dissertation research • Export to CSV • APA 7th edition citations</p>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="addRow()">+ Add Paper Manually</button>
+            <div class="url-input-group">
+                <input type="text" id="extractedData" placeholder="Paste extracted paper data here (JSON format)" style="flex: 1; margin: 0;">
+                <button class="btn btn-url" id="dataBtn" onclick="addFromExtractedData()">📋 Add from Data</button>
+            </div>
+            <button class="btn" onclick="showSummary()" style="background: #28a745;">🔄 Show Summary</button>
+            <div style="margin-top: 8px; font-size: 12px; color: #666; flex: 100%;">
+                💡 <strong>To extract paper info:</strong> Use browser extensions or manual entry to get paper details in JSON format!
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-export" onclick="exportToCSV()">📥 Export CSV</button>
+            <button class="btn" onclick="clearData()">🗑️ Clear All</button>
+            <input type="file" id="csvImport" accept=".csv" style="display: none;" onchange="importCSV(event)">
+            <button class="btn" onclick="document.getElementById('csvImport').click()">📤 Import CSV</button>
+        </div>
+
+        <div class="controls">
+            <div class="stats" id="stats">
+                <div class="stat-item">Total Papers: <span id="totalCount">0</span></div>
+                <div class="stat-item">Read: <span id="readCount">0</span></div>
+                <div class="stat-item">Reading: <span id="readingCount">0</span></div>
+                <div class="stat-item">To Read: <span id="toReadCount">0</span></div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="paperTable">
+                <thead>
+                    <tr>
+                        <th class="col-narrow">Actions</th>
+                        <th class="col-wide">Title</th>
+                        <th class="col-extra-wide">Authors</th>
+                        <th class="col-narrow">Year</th>
+                        <th class="col-extra-wide">Journal/Venue</th>
+                        <th class="col-extra-wide">Keywords/Tags</th>
+                        <th class="col-medium">Status</th>
+                        <th class="col-medium">Priority</th>
+                        <th class="col-narrow">Rating</th>
+                        <th class="col-medium">Date Added</th>
+                        <th class="col-notes">Key Points</th>
+                        <th class="col-notes">Notes/Relevance</th>
+                        <th class="col-notes">Citation</th>
+                        <th class="col-extra-wide">DOI/URL</th>
+                        <th class="col-extra-wide">Chapter/Topic</th>
+                    </tr>
+                </thead>
+                <tbody id="paperTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Papers Summary Section -->
+        <div class="summary-section">
+            <div class="summary-header">
+                <h2>📖 Papers Summary - Quick Access</h2>
+                <p>Click any title or link to access the full paper</p>
+            </div>
+            <div id="papersSummary" class="papers-grid">
+                <p style="text-align: center; color: #888; font-style: italic; padding: 40px;">No papers added yet. Add some papers to see them here!</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
