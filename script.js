@@ -15,7 +15,7 @@ function showSummary() {
     }
     
     if (papers.length === 0) {
-        summaryContainer.innerHTML = '<p style="text-align: center; color: #888; font-style: italic; padding: 40px;">No papers added yet. Add some papers to see them here!</p>';
+        summaryContainer.innerHTML = '<div style="width: 100%; text-align: center; color: #888; font-style: italic; padding: 40px; margin: 0 auto;">No papers added yet. Add some papers to see them here!</div>';
         return;
     }
     
