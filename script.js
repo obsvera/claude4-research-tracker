@@ -400,7 +400,7 @@ function importCSV(event) {
     }
 }
 
-// Initialize with sample data
+// Initialize with sample data (optional)
 function initSampleData() {
     const samplePaper = {
         id: nextId++,
@@ -427,5 +427,8 @@ function initSampleData() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    initSampleData();
+    // Start with empty tracker
+    renderTable();
+    updateStats();
+    showSummary();
 });
