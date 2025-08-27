@@ -1,95 +1,98 @@
-// Smart input processing function
-async function addFromSmartInput() {
-    const input = document.getElementById('extractedData').value.trim();
-    if (!input) {
-        alert('Please enter a paper title, URL, DOI, or citation information!');
-        return;
-    }
-
-    // Limit input length to prevent potential issues
-    if (input.length > 10000) {
-        alert('Input is too long. Please limit to 10,000 characters.');
-        return;
-    }
-
-    // Check if input is already valid JSON
-    try {
-        const paperInfo = JSON.parse(input);
-        
-        // Validate that it's an object with expected structure
-        if (typeof paperInfo !== 'object' || paperInfo === null) {
-            throw new Error('// Research Paper Tracker - JavaScript
+// Research Paper Tracker - JavaScript
 // Global variables - store data in JavaScript memory
 let papers = [];
 let nextId = 1;
 
 // Summary function
 function showSummary() {
-    console.log('showSummary called, papers length:', papers.length);
-    
     const summaryContainer = document.getElementById('papersSummary');
-    
-    if (!summaryContainer) {
-        console.error('Summary container not found!');
-        return;
-    }
+    if (!summaryContainer) return;
     
     if (papers.length === 0) {
+        summaryContainer.style.display = 'flex';
+        summaryContainer.style.justifyContent = 'center';
+        summaryContainer.style.alignItems = 'center';
         summaryContainer.innerHTML = '<div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; color: #888; font-style: italic; padding: 40px; min-height: 100px;">No papers added yet. Add some papers to see them here!</div>';
         return;
     }
     
+    // Reset container for grid display
+    summaryContainer.style.display = 'grid';
+    summaryContainer.style.justifyContent = '';
+    summaryContainer.style.alignItems = '';
+    
+    // Escape HTML to prevent XSS
+    const escapeHtml = (text) => {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+    
+    // Validate URLs to prevent XSS
+    const validateUrl = (url) => {
+        if (!url) return '#';
+        try {
+            const urlObj = new URL(url);
+            // Only allow http, https, and doi protocols
+            if (['http:', 'https:'].includes(urlObj.protocol)) {
+                return url;
+            }
+        } catch (e) {
+            // Invalid URL
+        }
+        return '#';
+    };
+    
     // Generate summary cards
-    let summaryHTML = '';
-    papers.forEach(paper => {
+    const summaryHTML = papers.map(paper => {
         const keywords = paper.keywords ? paper.keywords.split(',').map(k => k.trim()).filter(k => k) : [];
         const keywordTags = keywords.map(keyword => 
-            `<span class="keyword-tag">${keyword}</span>`
+            `<span class="keyword-tag">${escapeHtml(keyword)}</span>`
         ).join('');
         
-        const stars = paper.rating ? '★'.repeat(parseInt(paper.rating)) : '';
-        const paperUrl = paper.doi || '#';
+        const stars = paper.rating ? '★'.repeat(Math.min(parseInt(paper.rating) || 0, 5)) : '';
+        const paperUrl = validateUrl(paper.doi);
         
-        summaryHTML += `
+        return `
             <div class="paper-card">
                 <div class="paper-status-info">
-                    <span class="status-badge">${(paper.status || 'to-read').replace('-', ' ')}</span>
+                    <span class="status-badge">${escapeHtml((paper.status || 'to-read').replace('-', ' '))}</span>
                     <div>
-                        <span class="priority-badge">${paper.priority || 'medium'}</span>
-                        ${stars ? `<span class="rating-stars">${stars}</span>` : ''}
+                        <span class="priority-badge">${escapeHtml(paper.priority || 'medium')}</span>
+                        ${stars ? `<span class="rating-stars">${escapeHtml(stars)}</span>` : ''}
                     </div>
                 </div>
                 
-                <div class="paper-title" ${paperUrl !== '#' ? `onclick="window.open('${paperUrl}', '_blank')"` : ''} title="Click to open paper">
-                    ${paper.title || 'Untitled Paper'}
+                <div class="paper-title" ${paperUrl !== '#' ? `onclick="window.open('${escapeHtml(paperUrl)}', '_blank')"` : ''} title="Click to open paper">
+                    ${escapeHtml(paper.title || 'Untitled Paper')}
                 </div>
                 
-                ${paper.authors ? `<div class="paper-authors">${paper.authors}</div>` : ''}
+                ${paper.authors ? `<div class="paper-authors">${escapeHtml(paper.authors)}</div>` : ''}
                 
                 <div class="paper-year-journal">
-                    ${paper.year ? paper.year : 'Year not specified'}
-                    ${paper.journal ? ` • ${paper.journal}` : ''}
+                    ${paper.year ? escapeHtml(paper.year) : 'Year not specified'}
+                    ${paper.journal ? ` • ${escapeHtml(paper.journal)}` : ''}
                 </div>
                 
                 ${keywordTags ? `<div class="paper-keywords">${keywordTags}</div>` : ''}
                 
                 ${paper.keyPoints ? `<div class="paper-key-points" style="margin: 12px 0; padding: 10px; background: #f8f9fa; border-left: 3px solid #4a90e2; border-radius: 4px;">
                     <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Key Points:</div>
-                    <div style="font-size: 13px; line-height: 1.4; color: #555;">${paper.keyPoints}</div>
+                    <div style="font-size: 13px; line-height: 1.4; color: #555;">${escapeHtml(paper.keyPoints)}</div>
                 </div>` : ''}
                 
                 ${paper.notes ? `<div class="paper-relevance" style="margin: 12px 0; padding: 10px; background: #fff8e1; border-left: 3px solid #ffa726; border-radius: 4px;">
                     <div style="font-weight: 600; color: #e65100; margin-bottom: 5px; font-size: 12px; text-transform: uppercase;">Relevance & Notes:</div>
-                    <div style="font-size: 13px; line-height: 1.4; color: #555;">${paper.notes}</div>
+                    <div style="font-size: 13px; line-height: 1.4; color: #555;">${escapeHtml(paper.notes)}</div>
                 </div>` : ''}
                 
-                ${paperUrl !== '#' ? `<a href="${paperUrl}" target="_blank" class="paper-link">📖 Open Paper</a>` : ''}
+                ${paperUrl !== '#' ? `<a href="${escapeHtml(paperUrl)}" target="_blank" class="paper-link">📖 Open Paper</a>` : ''}
             </div>
         `;
-    });
+    }).join('');
     
     summaryContainer.innerHTML = summaryHTML;
-    console.log('Summary updated successfully');
 }
 
 // Paper management functions
@@ -460,8 +463,10 @@ Please ensure the JSON is properly formatted and fill in as much information as 
     // Focus and select the textarea
     setTimeout(() => {
         const textarea = document.getElementById('claude-prompt');
-        textarea.focus();
-        textarea.select();
+        if (textarea) {
+            textarea.focus();
+            textarea.select();
+        }
     }, 100);
 }
 
@@ -476,205 +481,23 @@ function closeClaudePromptModal() {
 // Copy Claude prompt to clipboard
 function copyClaudePrompt() {
     const textarea = document.getElementById('claude-prompt');
-    textarea.select();
-    document.execCommand('copy');
-    
-    // Show feedback
-    const button = document.querySelector('.modal-btn-primary');
-    const originalText = button.innerHTML;
-    button.innerHTML = '✅ Copied!';
-    button.style.background = '#28a745';
-    
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.style.background = '#4a90e2';
-    }, 2000);
-}
-
-// Detect what type of input the user provided
-function detectInputType(input) {
-    // Check for URLs
-    if (input.match(/^https?:\/\//i) || input.includes('arxiv.org') || input.includes('doi.org')) {
-        return 'url';
-    }
-    
-    // Check for DOI pattern
-    if (input.match(/^10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/)) {
-        return 'doi';
-    }
-    
-    // Check if it looks like a formatted citation
-    if (input.includes('et al.') || input.match(/\(\d{4}\)/)) {
-        return 'citation';
-    }
-    
-    // Default to title/general text
-    return 'title';
-}
-
-// Extract information from URL or DOI
-async function extractFromUrlOrDoi(input) {
-    // This is a placeholder - in a real implementation, you might:
-    // 1. Try to fetch the page and parse metadata
-    // 2. Use CrossRef API for DOIs
-    // 3. Check arXiv API for arXiv papers
-    
-    // For now, we'll simulate a basic check and then fall back to Claude
-    if (input.includes('example.com') || input.includes('broken-link')) {
-        throw new Error('URL not accessible');
-    }
-    
-    // If URL seems valid, extract with Claude but include the URL
-    return await extractWithClaude(input);
-}
-
-// Extract information using Claude
-async function extractWithClaude(input) {
-    const prompt = `I'm using a Research Paper Tracker app and need you to extract paper information. The user provided: "${input}"
-
-Please analyze this and return the information in this exact JSON format:
-
-{
-  "title": "Full paper title",
-  "authors": "Author names in APA format (Last, F. M., Last, F. M., & Last, F. M.)",
-  "year": "Publication year",
-  "journal": "Journal or venue name",
-  "keywords": "keyword1, keyword2, keyword3, keyword4",
-  "abstract": "Key findings, methodology, and main contributions in 2-3 sentences",
-  "url": "DOI link or paper URL",
-  "relevance": "Why this paper might be relevant to research (1-2 sentences)"
-}
-
-Please ensure the JSON is properly formatted and fill in as much information as possible. If you cannot find certain fields, use empty strings but keep the JSON structure intact.`;
-
-    // Simulate Claude API call with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
-    
-    try {
-        // This is a placeholder for the actual Claude API integration
-        // In a real implementation, this would make an actual API call
-        const response = await simulateClaudeResponse(input);
-        clearTimeout(timeoutId);
-        return response;
-    } catch (error) {
-        clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-            throw new Error('Request timed out after 20 seconds');
-        }
-        throw error;
-    }
-}
-
-// Simulate Claude response (placeholder function)
-async function simulateClaudeResponse(input) {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // For demo purposes, parse and extract information from the input
-    const lowerInput = input.toLowerCase();
-    
-    // Try to extract information from various input formats
-    let extractedInfo = {
-        title: "",
-        authors: "",
-        year: "",
-        journal: "",
-        keywords: "",
-        abstract: "",
-        url: "",
-        relevance: ""
-    };
-    
-    // Handle specific known papers
-    if (lowerInput.includes('attention') && lowerInput.includes('need') || input.includes('1706.03762')) {
-        return {
-            title: "Attention Is All You Need",
-            authors: "Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I.",
-            year: "2017",
-            journal: "Advances in Neural Information Processing Systems",
-            keywords: "transformer, attention mechanism, neural networks, deep learning",
-            abstract: "Introduced the Transformer architecture that revolutionized NLP by relying entirely on attention mechanisms, eliminating recurrence and convolutions.",
-            url: "https://arxiv.org/abs/1706.03762",
-            relevance: "Seminal paper for understanding modern language models and transformer architectures."
-        };
-    }
-    
-    // Try to parse citation-like input
-    const yearMatch = input.match(/\((\d{4})\)|\b(\d{4})\b/);
-    if (yearMatch) {
-        extractedInfo.year = yearMatch[1] || yearMatch[2];
-    }
-    
-    // Extract potential journal information
-    const journalPatterns = [
-        /Academy of Management/i,
-        /Management Review/i,
-        /Strategic Management/i,
-        /Nature/i,
-        /Science/i,
-        /Journal of/i,
-        /Proceedings of/i
-    ];
-    
-    for (const pattern of journalPatterns) {
-        const match = input.match(pattern);
-        if (match) {
-            extractedInfo.journal = match[0];
-            break;
+    if (textarea) {
+        textarea.select();
+        document.execCommand('copy');
+        
+        // Show feedback
+        const button = document.querySelector('.modal-btn-primary');
+        if (button) {
+            const originalText = button.innerHTML;
+            button.innerHTML = '✅ Copied!';
+            button.style.background = '#28a745';
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.background = '#4a90e2';
+            }, 2000);
         }
     }
-    
-    // Try to extract title (remove journal info if found)
-    let cleanTitle = input;
-    if (extractedInfo.journal) {
-        cleanTitle = input.replace(new RegExp(extractedInfo.journal, 'gi'), '').trim();
-    }
-    
-    // Clean up title by removing year, volume, issue info
-    cleanTitle = cleanTitle.replace(/\(\d{4}\)/g, '').replace(/\b\d{4}\b/, '');
-    cleanTitle = cleanTitle.replace(/Vol\.\s*\d+/gi, '').replace(/No\.\s*\d+/gi, '');
-    cleanTitle = cleanTitle.replace(/,\s*$/, '').trim();
-    
-    if (cleanTitle && cleanTitle.length > 3) {
-        extractedInfo.title = cleanTitle;
-    } else {
-        extractedInfo.title = input.substring(0, 100); // Fallback
-    }
-    
-    // Generate some basic keywords based on the input
-    const commonKeywords = {
-        'management': ['management', 'leadership', 'organization'],
-        'strategy': ['strategy', 'competitive advantage', 'business model'],
-        'technology': ['technology', 'innovation', 'digital transformation'],
-        'learning': ['machine learning', 'artificial intelligence', 'data science'],
-        'neural': ['neural networks', 'deep learning', 'AI'],
-        'social': ['social networks', 'sociology', 'social science']
-    };
-    
-    let suggestedKeywords = [];
-    for (const [key, keywords] of Object.entries(commonKeywords)) {
-        if (lowerInput.includes(key)) {
-            suggestedKeywords = suggestedKeywords.concat(keywords);
-            break;
-        }
-    }
-    
-    if (suggestedKeywords.length === 0) {
-        suggestedKeywords = ['research', 'academic study', 'analysis'];
-    }
-    
-    extractedInfo.keywords = suggestedKeywords.slice(0, 4).join(', ');
-    
-    // Add a generic relevance note
-    extractedInfo.relevance = "This paper may be relevant to your research area. Please review and update the relevance notes as needed.";
-    
-    // If it looks like a URL, preserve it
-    if (input.match(/^https?:\/\//)) {
-        extractedInfo.url = input;
-    }
-    
-    return extractedInfo;
 }
 
 // Show preview modal with extracted information
@@ -798,7 +621,7 @@ function addPaperFromPreview() {
         chapter: ""
     };
     
-    // Auto-generate citation
+        // Auto-generate citation
     const apaCitation = formatAPA7Citation(newPaper);
     if (apaCitation) {
         newPaper.citation = apaCitation;
@@ -936,31 +759,6 @@ function importCSV(event) {
     };
     
     reader.readAsText(file);
-}
-
-// Initialize with sample data (optional)
-function initSampleData() {
-    const samplePaper = {
-        id: nextId++,
-        title: "Attention Is All You Need",
-        authors: "Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I.",
-        year: "2017",
-        journal: "Advances in Neural Information Processing Systems",
-        keywords: "transformer, attention mechanism, neural networks, deep learning",
-        status: "read",
-        priority: "high", 
-        rating: "5",
-        dateAdded: new Date().toISOString().split('T')[0],
-        keyPoints: "Introduced the Transformer architecture that revolutionized NLP by relying entirely on attention mechanisms, eliminating recurrence and convolutions",
-        notes: "Seminal paper for understanding modern language models - highly relevant to Chapter 2. This architecture became the foundation for GPT, BERT, and other transformer-based models.",
-        citation: "Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, L., & Polosukhin, I. (2017). Attention is all you need. *Advances in Neural Information Processing Systems*, *30*. https://arxiv.org/abs/1706.03762",
-        doi: "https://arxiv.org/abs/1706.03762",
-        chapter: "Chapter 2: Literature Review"
-    };
-    papers.push(samplePaper);
-    renderTable();
-    updateStats();
-    console.log('Sample data initialized successfully!');
 }
 
 // Initialize the application
