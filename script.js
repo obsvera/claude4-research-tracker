@@ -1,4 +1,24 @@
-// Research Paper Tracker - JavaScript
+// Smart input processing function
+async function addFromSmartInput() {
+    const input = document.getElementById('extractedData').value.trim();
+    if (!input) {
+        alert('Please enter a paper title, URL, DOI, or citation information!');
+        return;
+    }
+
+    // Limit input length to prevent potential issues
+    if (input.length > 10000) {
+        alert('Input is too long. Please limit to 10,000 characters.');
+        return;
+    }
+
+    // Check if input is already valid JSON
+    try {
+        const paperInfo = JSON.parse(input);
+        
+        // Validate that it's an object with expected structure
+        if (typeof paperInfo !== 'object' || paperInfo === null) {
+            throw new Error('// Research Paper Tracker - JavaScript
 // Global variables - store data in JavaScript memory
 let papers = [];
 let nextId = 1;
@@ -98,22 +118,15 @@ function addRow() {
 }
 
 function deleteRow(id) {
-    console.log('Delete called for paper ID:', id);
-    
     const paperToDelete = papers.find(p => p.id === id);
-    const paperTitle = paperToDelete ? paperToDelete.title : 'Unknown paper';
+    if (!paperToDelete) return;
     
-    console.log(`Deleting paper: "${paperTitle}"`);
-    const originalLength = papers.length;
-    
-    papers = papers.filter(paper => paper.id !== id);
-    
-    console.log(`✅ Paper deleted! Array length: ${originalLength} -> ${papers.length}`);
-    
-    renderTable();
-    updateStats();
-    showSummary();
-    console.log('Delete operation completed successfully');
+    if (confirm(`Delete "${paperToDelete.title || 'Untitled Paper'}"?`)) {
+        papers = papers.filter(paper => paper.id !== id);
+        renderTable();
+        updateStats();
+        showSummary();
+    }
 }
 
 function clearData() {
@@ -128,25 +141,64 @@ function clearData() {
 
 function updatePaper(id, field, value) {
     const paper = papers.find(p => p.id === id);
-    if (paper) {
-        paper[field] = value;
-        
-        // Auto-format citation when key fields are updated
-        if (['title', 'authors', 'year', 'journal'].includes(field)) {
-            const formattedCitation = formatAPA7Citation(paper);
-            if (formattedCitation) {
-                paper.citation = formattedCitation;
-                const citationTextarea = document.querySelector(`textarea[onchange*="'citation'"][onchange*="${id}"]`);
-                if (citationTextarea) {
-                    citationTextarea.value = formattedCitation;
+    if (!paper) return;
+    
+    // Input validation and sanitization
+    const sanitizeInput = (input, maxLength = 1000) => {
+        if (typeof input !== 'string') return '';
+        return input.trim().substring(0, maxLength);
+    };
+    
+    const validateField = (fieldName, fieldValue) => {
+        switch (fieldName) {
+            case 'year':
+                const yearNum = parseInt(fieldValue);
+                return (!isNaN(yearNum) && yearNum >= 1000 && yearNum <= 2030) ? yearNum.toString() : '';
+            case 'rating':
+                const ratingNum = parseInt(fieldValue);
+                return (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) ? ratingNum.toString() : '';
+            case 'status':
+                return ['to-read', 'reading', 'read', 'skimmed'].includes(fieldValue) ? fieldValue : 'to-read';
+            case 'priority':
+                return ['low', 'medium', 'high'].includes(fieldValue) ? fieldValue : 'medium';
+            case 'doi':
+                // Basic URL/DOI validation
+                if (!fieldValue) return '';
+                try {
+                    if (fieldValue.startsWith('http://') || fieldValue.startsWith('https://')) {
+                        new URL(fieldValue); // Validates URL format
+                        return sanitizeInput(fieldValue, 500);
+                    } else if (fieldValue.match(/^10\.\d{4,}/)) {
+                        return sanitizeInput(fieldValue, 200);
+                    } else {
+                        return sanitizeInput(fieldValue, 500);
+                    }
+                } catch {
+                    return sanitizeInput(fieldValue, 500);
                 }
+            default:
+                return sanitizeInput(fieldValue);
+        }
+    };
+    
+    const sanitizedValue = validateField(field, value);
+    paper[field] = sanitizedValue;
+    
+    // Auto-format citation when key fields are updated
+    if (['title', 'authors', 'year', 'journal'].includes(field)) {
+        const formattedCitation = formatAPA7Citation(paper);
+        if (formattedCitation) {
+            paper.citation = formattedCitation;
+            const citationTextarea = document.querySelector(`textarea[onchange*="'citation'"][onchange*="${id}"]`);
+            if (citationTextarea) {
+                citationTextarea.value = formattedCitation;
             }
         }
-        
-        updateStats();
-        setTimeout(() => updateRowStyling(id), 0);
-        showSummary();
     }
+    
+    updateStats();
+    setTimeout(() => updateRowStyling(id), 0);
+    showSummary();
 }
 
 function updateRowStyling(id) {
@@ -162,32 +214,104 @@ function formatAPA7Citation(paper) {
         return "";
     }
     
+    // Clean and format authors
     let authors = paper.authors.trim();
-    if (authors) {
-        authors = authors.replace(/\s*&\s*/g, ', & ');
-        authors = authors.replace(/,\s*,/g, ',');
-        authors = authors.replace(/,\s*&\s*([^,]+)$/, ', & $1');
+    if (!authors) return "";
+    
+    // Handle multiple authors according to APA 7th edition
+    const authorArray = authors.split(/,\s*(?=\w)/).map(author => author.trim());
+    
+    let formattedAuthors = "";
+    if (authorArray.length === 1) {
+        // Single author
+        formattedAuthors = authorArray[0];
+    } else if (authorArray.length === 2) {
+        // Two authors: "Smith, J., & Jones, A."
+        formattedAuthors = `${authorArray[0]}, & ${authorArray[1]}`;
+    } else if (authorArray.length >= 3 && authorArray.length <= 20) {
+        // 3-20 authors: "Smith, J., Jones, A., & Brown, C."
+        const lastAuthor = authorArray[authorArray.length - 1];
+        const otherAuthors = authorArray.slice(0, -1);
+        formattedAuthors = `${otherAuthors.join(', ')}, & ${lastAuthor}`;
+    } else if (authorArray.length > 20) {
+        // More than 20 authors: list first 19, then "..." then last author
+        const first19 = authorArray.slice(0, 19);
+        const lastAuthor = authorArray[authorArray.length - 1];
+        formattedAuthors = `${first19.join(', ')}, ... ${lastAuthor}`;
     }
     
+    // Format year
     const year = paper.year ? `(${paper.year})` : "(n.d.)";
+    
+    // Format title (sentence case, no quotes for journal articles)
     const title = paper.title.trim();
+    
+    // Format journal name (italicized)
     const journal = paper.journal ? paper.journal.trim() : "";
     
     if (journal) {
+        // Handle special cases
         if (journal.toLowerCase().includes('arxiv')) {
+            // arXiv preprint format
             const arxivMatch = paper.doi ? paper.doi.match(/arxiv\.org\/abs\/([0-9]+\.[0-9]+)/) : null;
             const arxivId = arxivMatch ? arxivMatch[1] : "";
-            return `${authors} ${year}. ${title}. *arXiv preprint*${arxivId ? ` arXiv:${arxivId}` : ""}. ${paper.doi || ""}`;
+            return `${formattedAuthors} ${year}. ${title}. <em>arXiv preprint</em>${arxivId ? ` arXiv:${arxivId}` : ""}. ${paper.doi || ""}`.trim();
         } else {
-            return `${authors} ${year}. ${title}. *${journal}*${paper.volume ? `, ${paper.volume}` : ""}${paper.issue ? `(${paper.issue})` : ""}${paper.pages ? `, ${paper.pages}` : ""}. ${paper.doi || ""}`;
+            // Regular journal article
+            let citation = `${formattedAuthors} ${year}. ${title}. <em>${journal}</em>`;
+            
+            // Add volume (required for most journals)
+            if (paper.volume) {
+                citation += `, <em>${paper.volume}</em>`;
+            }
+            
+            // Add issue number in parentheses (if available)
+            if (paper.issue) {
+                citation += `(${paper.issue})`;
+            }
+            
+            // Add page numbers with en-dash
+            if (paper.pages) {
+                const pages = paper.pages.replace(/-/g, '–'); // Convert hyphens to en-dashes
+                citation += `, ${pages}`;
+            }
+            
+            // Add DOI or URL
+            if (paper.doi) {
+                if (paper.doi.startsWith('http')) {
+                    citation += `. ${paper.doi}`;
+                } else if (paper.doi.startsWith('10.')) {
+                    citation += `. https://doi.org/${paper.doi}`;
+                } else {
+                    citation += `. ${paper.doi}`;
+                }
+            }
+            
+            return citation + ".";
         }
     } else {
-        return `${authors} ${year}. ${title}. ${paper.doi || ""}`;
+        // No journal (book, report, etc.)
+        let citation = `${formattedAuthors} ${year}. ${title}`;
+        
+        // Add URL/DOI if available
+        if (paper.doi) {
+            if (paper.doi.startsWith('http')) {
+                citation += `. ${paper.doi}`;
+            } else if (paper.doi.startsWith('10.')) {
+                citation += `. https://doi.org/${paper.doi}`;
+            } else {
+                citation += `. ${paper.doi}`;
+            }
+        }
+        
+        return citation + ".";
     }
 }
 
 function renderTable() {
     const tbody = document.getElementById('paperTableBody');
+    if (!tbody) return;
+    
     tbody.innerHTML = '';
 
     papers.forEach(paper => {
@@ -195,15 +319,22 @@ function renderTable() {
         row.setAttribute('data-id', paper.id);
         row.className = `status-${paper.status} priority-${paper.priority}`;
         
+        // Escape HTML in user input to prevent XSS
+        const escapeHtml = (text) => {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+        
         row.innerHTML = `
             <td>
                 <button onclick="deleteRow(${paper.id})" style="background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap;">Delete</button>
             </td>
-            <td><input type="text" value="${paper.title}" onchange="updatePaper(${paper.id}, 'title', this.value)" placeholder="Paper title"></td>
-            <td><input type="text" value="${paper.authors}" onchange="updatePaper(${paper.id}, 'authors', this.value)" placeholder="Author names"></td>
-            <td><input type="number" value="${paper.year}" onchange="updatePaper(${paper.id}, 'year', this.value)" placeholder="2023" min="1900" max="2030"></td>
-            <td><input type="text" value="${paper.journal}" onchange="updatePaper(${paper.id}, 'journal', this.value)" placeholder="Journal name"></td>
-            <td><input type="text" value="${paper.keywords}" onchange="updatePaper(${paper.id}, 'keywords', this.value)" placeholder="keyword1, keyword2"></td>
+            <td><input type="text" value="${escapeHtml(paper.title)}" onchange="updatePaper(${paper.id}, 'title', this.value)" placeholder="Paper title"></td>
+            <td><input type="text" value="${escapeHtml(paper.authors)}" onchange="updatePaper(${paper.id}, 'authors', this.value)" placeholder="Author names"></td>
+            <td><input type="number" value="${escapeHtml(paper.year)}" onchange="updatePaper(${paper.id}, 'year', this.value)" placeholder="2023" min="1900" max="2030"></td>
+            <td><input type="text" value="${escapeHtml(paper.journal)}" onchange="updatePaper(${paper.id}, 'journal', this.value)" placeholder="Journal name"></td>
+            <td><input type="text" value="${escapeHtml(paper.keywords)}" onchange="updatePaper(${paper.id}, 'keywords', this.value)" placeholder="keyword1, keyword2"></td>
             <td>
                 <select onchange="updatePaper(${paper.id}, 'status', this.value)">
                     <option value="to-read" ${paper.status === 'to-read' ? 'selected' : ''}>To Read</option>
@@ -229,18 +360,16 @@ function renderTable() {
                     <option value="5" ${paper.rating === '5' ? 'selected' : ''}>5⭐</option>
                 </select>
             </td>
-            <td><input type="date" value="${paper.dateAdded}" onchange="updatePaper(${paper.id}, 'dateAdded', this.value)"></td>
-            <td><textarea onchange="updatePaper(${paper.id}, 'keyPoints', this.value)" placeholder="Main findings, methodology, key insights...">${paper.keyPoints}</textarea></td>
-            <td><textarea onchange="updatePaper(${paper.id}, 'notes', this.value)" placeholder="Relevance to dissertation, connections to other work, critical analysis...">${paper.notes}</textarea></td>
-            <td><textarea onchange="updatePaper(${paper.id}, 'citation', this.value)" placeholder="APA 7th edition citation (auto-generated when title/authors/year/journal are filled)">${paper.citation}</textarea></td>
-            <td><input type="url" value="${paper.doi}" onchange="updatePaper(${paper.id}, 'doi', this.value)" placeholder="DOI or URL"></td>
-            <td><input type="text" value="${paper.chapter}" onchange="updatePaper(${paper.id}, 'chapter', this.value)" placeholder="Chapter 1, Literature Review, etc."></td>
+            <td><input type="date" value="${escapeHtml(paper.dateAdded)}" onchange="updatePaper(${paper.id}, 'dateAdded', this.value)"></td>
+            <td><textarea onchange="updatePaper(${paper.id}, 'keyPoints', this.value)" placeholder="Main findings, methodology, key insights...">${escapeHtml(paper.keyPoints)}</textarea></td>
+            <td><textarea onchange="updatePaper(${paper.id}, 'notes', this.value)" placeholder="Relevance to dissertation, connections to other work, critical analysis...">${escapeHtml(paper.notes)}</textarea></td>
+            <td><textarea onchange="updatePaper(${paper.id}, 'citation', this.value)" placeholder="APA 7th edition citation (auto-generated when title/authors/year/journal are filled)">${escapeHtml(paper.citation)}</textarea></td>
+            <td><input type="url" value="${escapeHtml(paper.doi)}" onchange="updatePaper(${paper.id}, 'doi', this.value)" placeholder="DOI or URL"></td>
+            <td><input type="text" value="${escapeHtml(paper.chapter)}" onchange="updatePaper(${paper.id}, 'chapter', this.value)" placeholder="Chapter 1, Literature Review, etc."></td>
         `;
         
         tbody.appendChild(row);
     });
-    
-    showSummary();
 }
 
 // Smart input processing function
@@ -251,14 +380,34 @@ async function addFromSmartInput() {
         return;
     }
 
+    // Limit input length to prevent potential issues
+    if (input.length > 10000) {
+        alert('Input is too long. Please limit to 10,000 characters.');
+        return;
+    }
+
     // Check if input is already valid JSON
     try {
         const paperInfo = JSON.parse(input);
+        
+        // Validate that it's an object with expected structure
+        if (typeof paperInfo !== 'object' || paperInfo === null || Array.isArray(paperInfo)) {
+            throw new Error('Invalid JSON structure');
+        }
+        
+        // Validate required JSON structure for paper info
+        const validKeys = ['title', 'authors', 'year', 'journal', 'keywords', 'abstract', 'url', 'relevance'];
+        const hasValidStructure = Object.keys(paperInfo).some(key => validKeys.includes(key));
+        
+        if (!hasValidStructure) {
+            throw new Error('JSON does not contain expected paper fields');
+        }
+        
         // Valid JSON - show preview modal
         showPreviewModal(paperInfo);
         return;
     } catch (e) {
-        // Not JSON - show Claude prompt instead
+        // Not valid JSON or not paper structure - show Claude prompt instead
         showClaudePrompt(input);
         return;
     }
@@ -530,46 +679,65 @@ async function simulateClaudeResponse(input) {
 
 // Show preview modal with extracted information
 function showPreviewModal(paperInfo) {
+    // Validate and sanitize paperInfo
+    const escapeHtml = (text) => {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text.toString();
+        return div.innerHTML;
+    };
+    
+    const sanitizedPaper = {
+        title: escapeHtml(paperInfo.title || ''),
+        authors: escapeHtml(paperInfo.authors || ''),
+        year: escapeHtml(paperInfo.year || ''),
+        journal: escapeHtml(paperInfo.journal || ''),
+        keywords: escapeHtml(paperInfo.keywords || ''),
+        abstract: escapeHtml(paperInfo.abstract || ''),
+        url: escapeHtml(paperInfo.url || ''),
+        relevance: escapeHtml(paperInfo.relevance || '')
+    };
+    
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">✅ Paper Information Found</h3>
+                <h3 class="modal-title">Paper Information Found</h3>
                 <button class="modal-close" onclick="closePreviewModal()">&times;</button>
             </div>
             <div class="modal-content">
                 <div class="modal-field">
                     <label>Title</label>
-                    <input type="text" id="preview-title" value="${paperInfo.title || ''}">
+                    <input type="text" id="preview-title" value="${sanitizedPaper.title}" maxlength="500">
                 </div>
                 <div class="modal-field">
                     <label>Authors</label>
-                    <input type="text" id="preview-authors" value="${paperInfo.authors || ''}">
+                    <input type="text" id="preview-authors" value="${sanitizedPaper.authors}" maxlength="500">
                 </div>
                 <div class="modal-field">
                     <label>Year</label>
-                    <input type="text" id="preview-year" value="${paperInfo.year || ''}">
+                    <input type="number" id="preview-year" value="${sanitizedPaper.year}" min="1000" max="2030">
                 </div>
                 <div class="modal-field">
                     <label>Journal/Venue</label>
-                    <input type="text" id="preview-journal" value="${paperInfo.journal || ''}">
+                    <input type="text" id="preview-journal" value="${sanitizedPaper.journal}" maxlength="300">
                 </div>
                 <div class="modal-field">
                     <label>Keywords</label>
-                    <input type="text" id="preview-keywords" value="${paperInfo.keywords || ''}">
+                    <input type="text" id="preview-keywords" value="${sanitizedPaper.keywords}" maxlength="500">
                 </div>
                 <div class="modal-field">
                     <label>Key Points/Abstract</label>
-                    <textarea id="preview-abstract">${paperInfo.abstract || ''}</textarea>
+                    <textarea id="preview-abstract" maxlength="2000">${sanitizedPaper.abstract}</textarea>
                 </div>
                 <div class="modal-field">
                     <label>DOI/URL</label>
-                    <input type="text" id="preview-url" value="${paperInfo.url || ''}">
+                    <input type="url" id="preview-url" value="${sanitizedPaper.url}" maxlength="500">
                 </div>
                 <div class="modal-field">
                     <label>Relevance/Notes</label>
-                    <textarea id="preview-relevance">${paperInfo.relevance || ''}</textarea>
+                    <textarea id="preview-relevance" maxlength="1000">${sanitizedPaper.relevance}</textarea>
                 </div>
             </div>
             <div class="modal-actions">
@@ -581,9 +749,10 @@ function showPreviewModal(paperInfo) {
     
     document.body.appendChild(modal);
     
-    // Focus first input
+    // Focus first input with safety check
     setTimeout(() => {
-        document.getElementById('preview-title').focus();
+        const titleInput = document.getElementById('preview-title');
+        if (titleInput) titleInput.focus();
     }, 100);
 }
 
@@ -597,21 +766,35 @@ function closePreviewModal() {
 
 // Add paper from preview modal
 function addPaperFromPreview() {
+    const titleEl = document.getElementById('preview-title');
+    const authorsEl = document.getElementById('preview-authors');
+    const yearEl = document.getElementById('preview-year');
+    const journalEl = document.getElementById('preview-journal');
+    const keywordsEl = document.getElementById('preview-keywords');
+    const abstractEl = document.getElementById('preview-abstract');
+    const urlEl = document.getElementById('preview-url');
+    const relevanceEl = document.getElementById('preview-relevance');
+    
+    if (!titleEl || !authorsEl || !yearEl || !journalEl || !keywordsEl || !abstractEl || !urlEl || !relevanceEl) {
+        alert('Error: Could not find all required form fields');
+        return;
+    }
+    
     const newPaper = {
         id: nextId++,
-        title: document.getElementById('preview-title').value || '',
-        authors: document.getElementById('preview-authors').value || '',
-        year: document.getElementById('preview-year').value || '',
-        journal: document.getElementById('preview-journal').value || '',
-        keywords: document.getElementById('preview-keywords').value || '',
+        title: titleEl.value || '',
+        authors: authorsEl.value || '',
+        year: yearEl.value || '',
+        journal: journalEl.value || '',
+        keywords: keywordsEl.value || '',
         status: "to-read",
         priority: "medium",
         rating: "",
         dateAdded: new Date().toISOString().split('T')[0],
-        keyPoints: document.getElementById('preview-abstract').value || '',
-        notes: document.getElementById('preview-relevance').value || '',
+        keyPoints: abstractEl.value || '',
+        notes: relevanceEl.value || '',
         citation: "",
-        doi: document.getElementById('preview-url').value || '',
+        doi: urlEl.value || '',
         chapter: ""
     };
     
@@ -627,10 +810,11 @@ function addPaperFromPreview() {
     showSummary();
     
     // Clear input and close modal
-    document.getElementById('extractedData').value = '';
+    const extractedDataEl = document.getElementById('extractedData');
+    if (extractedDataEl) extractedDataEl.value = '';
     closePreviewModal();
     
-    alert('✅ Paper added successfully to your library!');
+    alert('Paper added successfully to your library!');
 }
 
 function updateStats() {
@@ -680,41 +864,78 @@ function exportToCSV() {
 
 function importCSV(event) {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        return;
+    }
+    
+    // Validate file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File is too large. Please select a file smaller than 10MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
             const csv = e.target.result;
             const lines = csv.split('\n');
             
-            for (let i = 1; i < lines.length; i++) {
-                if (lines[i].trim()) {
-                    const values = lines[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
-                    const paper = {
-                        id: nextId++,
-                        title: values[0] ? values[0].replace(/"/g, '') : '',
-                        authors: values[1] ? values[1].replace(/"/g, '') : '',
-                        year: values[2] ? values[2].replace(/"/g, '') : '',
-                        journal: values[3] ? values[3].replace(/"/g, '') : '',
-                        keywords: values[4] ? values[4].replace(/"/g, '') : '',
-                        status: values[5] ? values[5].replace(/"/g, '') : 'to-read',
-                        priority: values[6] ? values[6].replace(/"/g, '') : 'medium',
-                        rating: values[7] ? values[7].replace(/"/g, '') : '',
-                        dateAdded: values[8] ? values[8].replace(/"/g, '') : new Date().toISOString().split('T')[0],
-                        keyPoints: values[9] ? values[9].replace(/"/g, '') : '',
-                        notes: values[10] ? values[10].replace(/"/g, '') : '',
-                        citation: values[11] ? values[11].replace(/"/g, '') : '',
-                        doi: values[12] ? values[12].replace(/"/g, '') : '',
-                        chapter: values[13] ? values[13].replace(/"/g, '') : ''
-                    };
-                    papers.push(paper);
-                }
+            let importCount = 0;
+            const maxRows = 1000; // Prevent memory issues
+            
+            for (let i = 1; i < Math.min(lines.length, maxRows + 1); i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const values = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                if (values.length < 3) continue; // Minimum required fields
+                
+                const cleanValue = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
+                
+                const paper = {
+                    id: nextId++,
+                    title: cleanValue(values[0]).substring(0, 500),
+                    authors: cleanValue(values[1]).substring(0, 500),
+                    year: cleanValue(values[2]).substring(0, 4),
+                    journal: cleanValue(values[3]).substring(0, 300),
+                    keywords: cleanValue(values[4]).substring(0, 500),
+                    status: ['to-read', 'reading', 'read', 'skimmed'].includes(cleanValue(values[5])) ? cleanValue(values[5]) : 'to-read',
+                    priority: ['low', 'medium', 'high'].includes(cleanValue(values[6])) ? cleanValue(values[6]) : 'medium',
+                    rating: ['1','2','3','4','5'].includes(cleanValue(values[7])) ? cleanValue(values[7]) : '',
+                    dateAdded: cleanValue(values[8]) || new Date().toISOString().split('T')[0],
+                    keyPoints: cleanValue(values[9]).substring(0, 2000),
+                    notes: cleanValue(values[10]).substring(0, 1000),
+                    citation: cleanValue(values[11]).substring(0, 1000),
+                    doi: cleanValue(values[12]).substring(0, 500),
+                    chapter: cleanValue(values[13]).substring(0, 200)
+                };
+                
+                papers.push(paper);
+                importCount++;
             }
-            renderTable();
-            updateStats();
-            showSummary();
-        };
-        reader.readAsText(file);
-    }
+            
+            if (importCount > 0) {
+                renderTable();
+                updateStats();
+                showSummary();
+                alert(`Successfully imported ${importCount} papers`);
+            } else {
+                alert('No valid papers found in the CSV file');
+            }
+        } catch (error) {
+            alert('Error reading CSV file. Please check the file format');
+        }
+    };
+    
+    reader.onerror = function() {
+        alert('Error reading file');
+    };
+    
+    reader.readAsText(file);
 }
 
 // Initialize with sample data (optional)
@@ -745,7 +966,6 @@ function initSampleData() {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     // Start with empty tracker
-    renderTable();
     updateStats();
     showSummary();
 });
