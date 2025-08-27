@@ -64,7 +64,7 @@ Simply fork the repository at `https://github.com/obsvera/claude4-research-track
    - DOIs: "10.1038/nature12373"
 2. **Click "+ Add"** - the app automatically detects this isn't JSON
 3. **Copy the generated prompt** from the modal that appears
-4. **Paste into Claude** (any Claude interface) and get the JSON response
+4. **Paste into Claude** (any AI interface) and get the JSON response
 5. **Paste the JSON back** into the input field and click "+ Add" again
 6. **Review and edit** extracted information in the preview modal
 7. **Add to library** with one click
