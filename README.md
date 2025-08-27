@@ -7,28 +7,19 @@ A comprehensive web application for organizing dissertation research, tracking a
 ## Features
 
 ### Smart Paper Input
-- **Intelligent text processing** - Enter paper titles, partial citations, URLs, or DOIs
-- **Claude integration** - Automatically generates prompts for accurate paper extraction
-- **JSON support** - Accepts properly formatted JSON for advanced users
-- **Auto-generated APA 7th edition citations** from paper details
+- Enter paper titles, citations, URLs, or DOIs - app generates Claude prompts automatically
+- JSON support for advanced users
+- Auto-generated APA 7th edition citations
 
 ### Paper Management
-- **Comprehensive tracking** - Title, Authors, Year, Journal, Keywords, Status, Priority, Rating
-- **Color-coded organization** - Visual status and priority indicators
-- **Research notes** - Key Points and Relevance sections for detailed analysis
-- **Chapter organization** - Organize papers by dissertation sections
+- Track title, authors, year, journal, keywords, status, priority, rating
+- Color-coded organization with visual indicators
+- Research notes and chapter assignments
 
 ### Data Management
-- **CSV export/import** with full data backup and restore
-- **Excel/Google Sheets integration** for advanced analysis and collaboration
-- **Secure input validation** prevents XSS and injection attacks
-- **Client-side storage** - all data stays in your browser for privacy
-
-### Visual Interface
-- **Summary cards** with quick paper access and one-click URL opening
-- **Statistics dashboard** tracks reading progress
-- **Responsive design** works on desktop, tablet, and mobile
-- **Accessibility features** with keyboard navigation and screen reader support
+- CSV export/import with Excel/Google Sheets compatibility
+- Secure input validation
+- Client-side storage for privacy
 
 ## Quick Start
 
@@ -39,37 +30,27 @@ A comprehensive web application for organizing dissertation research, tracking a
 2. Choose a username, enter your email and create a password
 3. Verify your email address when prompted
 
-**Step 2: Create Your Repository**
-1. After logging in, click the green "New" button (top left)
-2. Name your repository (e.g., "research-paper-tracker")
-3. Make sure "Public" is selected (required for free GitHub Pages)
-4. Check "Add a README file"
-5. Click "Create repository"
+**Step 2: Fork This Repository**
+1. Go to the repository: `https://github.com/obsvera/claude4-research-tracker`
+2. Click the "Fork" button in the top-right corner
+3. Select your account as the destination
+4. Wait for GitHub to create your copy of the repository
 
-**Step 3: Upload the Application Files**
-1. In your new repository, click "Add file" then "Upload files"
-2. Download and upload these 4 files (copy content from the artifacts):
-   - `index.html` - Main application page
-   - `styles.css` - Visual styling
-   - `script.js` - Application functionality  
-   - `README.md` - Documentation (replace the default one)
-3. Scroll down, add a commit message like "Add research paper tracker"
-4. Click "Commit changes"
-
-**Step 4: Enable GitHub Pages**
-1. Click the "Settings" tab in your repository
+**Step 3: Enable GitHub Pages**
+1. In your forked repository, click the "Settings" tab
 2. Scroll down to "Pages" section in the left sidebar
 3. Under "Source", select "Deploy from a branch"
 4. Choose "main" branch and "/ (root)" folder
 5. Click "Save"
 6. Wait 5-10 minutes for deployment
 
-**Step 5: Access Your App**
-- Your app will be live at: `https://yourusername.github.io/repository-name`
+**Step 4: Access Your App**
+- Your app will be live at: `https://yourusername.github.io/claude4-research-tracker`
 - GitHub will show you the exact URL in the Pages settings
+- Bookmark this URL for easy access
 
 ### For GitHub Users
-If you're already familiar with GitHub, simply fork this repository and enable Pages in your fork settings.
+Simply fork the repository at `https://github.com/obsvera/claude4-research-tracker` and enable Pages in your fork settings.
 
 ## How to Use
 
