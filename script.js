@@ -468,6 +468,61 @@ function showCopyFeedback(id) {
     }
 }
 
+// Copy citation from summary card
+function copyCitationFromCard(id) {
+    const paper = papers.find(p => p.id === id);
+    if (!paper || !paper.citation) {
+        alert('No citation available to copy');
+        return;
+    }
+    
+    // Try to use the modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(paper.citation).then(() => {
+            showCopyFeedbackCard(id);
+        }).catch(() => {
+            // Fallback to legacy method
+            fallbackCopyCard(paper.citation, id);
+        });
+    } else {
+        // Fallback to legacy method
+        fallbackCopyCard(paper.citation, id);
+    }
+}
+
+function fallbackCopyCard(text, id) {
+    // Create a temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+        document.execCommand('copy');
+        showCopyFeedbackCard(id);
+    } catch (err) {
+        alert('Failed to copy citation. Please manually select and copy the text.');
+    }
+    
+    document.body.removeChild(textarea);
+}
+
+function showCopyFeedbackCard(id) {
+    const button = document.querySelector(`button[onclick="copyCitationFromCard(${id})"]`);
+    if (button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Copied!';
+        button.style.background = '#28a745';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+        }, 2000);
+    }
+}
+
 function updateStats() {
     const total = papers.length;
     const read = papers.filter(p => p.status === 'read').length;
