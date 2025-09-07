@@ -344,6 +344,14 @@ textarea {
     color: #666;
 }
 
+.paper-card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
 .paper-link {
     display: inline-block;
     color: #4a90e2;
@@ -353,20 +361,11 @@ textarea {
     border: 1px solid #4a90e2;
     border-radius: 4px;
     transition: all 0.2s ease;
-    margin-right: 8px;
 }
 
 .paper-link:hover {
     background: #4a90e2;
     color: white;
-}
-
-.paper-card-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-top: 12px;
 }
 
 .copy-citation-card-btn {
