@@ -153,6 +153,57 @@ textarea {
     background: #218838;
 }
 
+/* Citation Display Styles */
+.citation-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+}
+
+.citation-display {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #f8f9fa;
+    font-size: 13px;
+    line-height: 1.4;
+    min-height: 60px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.citation-display:hover {
+    border-color: #4a90e2;
+    background: #f0f4ff;
+}
+
+.citation-display em {
+    font-style: italic;
+}
+
+.copy-citation-btn {
+    background: #4a90e2;
+    color: white;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+    height: fit-content;
+    white-space: nowrap;
+}
+
+.copy-citation-btn:hover {
+    background: #357abd;
+}
+
+.copy-citation-btn:active {
+    background: #28a745;
+}
+
 /* Column Widths */
 .col-narrow { width: 100px; }
 .col-medium { width: 150px; }
