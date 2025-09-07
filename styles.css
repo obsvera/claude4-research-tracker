@@ -353,11 +353,40 @@ textarea {
     border: 1px solid #4a90e2;
     border-radius: 4px;
     transition: all 0.2s ease;
+    margin-right: 8px;
 }
 
 .paper-link:hover {
     background: #4a90e2;
     color: white;
+}
+
+.paper-card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.copy-citation-card-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+    white-space: nowrap;
+}
+
+.copy-citation-card-btn:hover {
+    background: #5a6268;
+}
+
+.copy-citation-card-btn:active {
+    background: #28a745;
 }
 
 .rating-stars {
