@@ -471,9 +471,20 @@ function showCopyFeedback(id) {
 // Copy citation from summary card
 function copyCitationFromCard(id) {
     const paper = papers.find(p => p.id === id);
-    if (!paper || !paper.citation) {
-        alert('No citation available to copy');
+    if (!paper) {
+        alert('Paper not found');
         return;
+    }
+    
+    // If no citation exists, try to generate one
+    if (!paper.citation) {
+        const citationData = formatAPA7CitationHTML(paper);
+        if (citationData.text) {
+            paper.citation = citationData.text;
+        } else {
+            alert('Cannot generate citation - please ensure title, authors, year, and journal are filled in');
+            return;
+        }
     }
     
     // Try to use the modern clipboard API first
