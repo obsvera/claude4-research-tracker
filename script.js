@@ -189,12 +189,13 @@ function updatePaper(id, field, value) {
     
     // Auto-format citation when key fields are updated
     if (['title', 'authors', 'year', 'journal'].includes(field)) {
-        const formattedCitation = formatAPA7Citation(paper);
-        if (formattedCitation) {
-            paper.citation = formattedCitation;
-            const citationTextarea = document.querySelector(`textarea[onchange*="'citation'"][onchange*="${id}"]`);
-            if (citationTextarea) {
-                citationTextarea.value = formattedCitation;
+        const citationData = formatAPA7CitationHTML(paper);
+        if (citationData.text) {
+            paper.citation = citationData.text;
+            const citationDiv = document.querySelector(`div[data-citation-id="${id}"]`);
+            if (citationDiv) {
+                citationDiv.innerHTML = citationData.html || citationData.text;
+                citationDiv.setAttribute('data-citation-text', citationData.text);
             }
         }
     }
@@ -258,14 +259,14 @@ function formatAPA7Citation(paper) {
             // arXiv preprint format
             const arxivMatch = paper.doi ? paper.doi.match(/arxiv\.org\/abs\/([0-9]+\.[0-9]+)/) : null;
             const arxivId = arxivMatch ? arxivMatch[1] : "";
-            return `${formattedAuthors} ${year}. ${title}. <em>arXiv preprint</em>${arxivId ? ` arXiv:${arxivId}` : ""}. ${paper.doi || ""}`.trim();
+            return `${formattedAuthors} ${year}. ${title}. arXiv preprint${arxivId ? ` arXiv:${arxivId}` : ""}. ${paper.doi || ""}`.trim();
         } else {
             // Regular journal article
-            let citation = `${formattedAuthors} ${year}. ${title}. <em>${journal}</em>`;
+            let citation = `${formattedAuthors} ${year}. ${title}. ${journal}`;
             
             // Add volume (required for most journals)
             if (paper.volume) {
-                citation += `, <em>${paper.volume}</em>`;
+                citation += `, ${paper.volume}`;
             }
             
             // Add issue number in parentheses (if available)
@@ -311,6 +312,31 @@ function formatAPA7Citation(paper) {
     }
 }
 
+// Create HTML version for display (with italics) and plain text version for copying
+function formatAPA7CitationHTML(paper) {
+    const plainText = formatAPA7Citation(paper);
+    if (!plainText) return { html: "", text: "" };
+    
+    const journal = paper.journal ? paper.journal.trim() : "";
+    let htmlVersion = plainText;
+    
+    if (journal && !journal.toLowerCase().includes('arxiv')) {
+        // Italicize journal name and volume for display
+        htmlVersion = htmlVersion.replace(new RegExp(`\\b${journal}\\b`), `<em>${journal}</em>`);
+        
+        // If there's a volume number after the journal, italicize it too
+        if (paper.volume) {
+            const volumePattern = new RegExp(`(<em>${journal}</em>), (${paper.volume})`);
+            htmlVersion = htmlVersion.replace(volumePattern, `$1, <em>$2</em>`);
+        }
+    } else if (journal && journal.toLowerCase().includes('arxiv')) {
+        // Italicize "arXiv preprint" for display
+        htmlVersion = htmlVersion.replace('arXiv preprint', '<em>arXiv preprint</em>');
+    }
+    
+    return { html: htmlVersion, text: plainText };
+}
+
 function renderTable() {
     const tbody = document.getElementById('paperTableBody');
     if (!tbody) return;
@@ -328,6 +354,8 @@ function renderTable() {
             div.textContent = text;
             return div.innerHTML;
         };
+        
+        const citationData = formatAPA7CitationHTML(paper);
         
         row.innerHTML = `
             <td>
@@ -366,13 +394,199 @@ function renderTable() {
             <td><input type="date" value="${escapeHtml(paper.dateAdded)}" onchange="updatePaper(${paper.id}, 'dateAdded', this.value)"></td>
             <td><textarea onchange="updatePaper(${paper.id}, 'keyPoints', this.value)" placeholder="Main findings, methodology, key insights...">${escapeHtml(paper.keyPoints)}</textarea></td>
             <td><textarea onchange="updatePaper(${paper.id}, 'notes', this.value)" placeholder="Relevance to dissertation, connections to other work, critical analysis...">${escapeHtml(paper.notes)}</textarea></td>
-            <td><textarea onchange="updatePaper(${paper.id}, 'citation', this.value)" placeholder="APA 7th edition citation (auto-generated when title/authors/year/journal are filled)">${escapeHtml(paper.citation)}</textarea></td>
+            <td>
+                <div class="citation-container">
+                    <div class="citation-display" data-citation-id="${paper.id}" data-citation-text="${escapeHtml(citationData.text)}" title="Click to copy citation">
+                        ${citationData.html || citationData.text || '<em>Enter title, authors, year, and journal to auto-generate APA citation</em>'}
+                    </div>
+                    <button class="copy-citation-btn" onclick="copyCitation(${paper.id})" title="Copy citation to clipboard">📋</button>
+                </div>
+            </td>
             <td><input type="url" value="${escapeHtml(paper.doi)}" onchange="updatePaper(${paper.id}, 'doi', this.value)" placeholder="DOI or URL"></td>
             <td><input type="text" value="${escapeHtml(paper.chapter)}" onchange="updatePaper(${paper.id}, 'chapter', this.value)" placeholder="Chapter 1, Literature Review, etc."></td>
         `;
         
         tbody.appendChild(row);
     });
+}
+
+// Copy citation to clipboard
+function copyCitation(id) {
+    const citationDiv = document.querySelector(`div[data-citation-id="${id}"]`);
+    if (!citationDiv) return;
+    
+    const citationText = citationDiv.getAttribute('data-citation-text');
+    if (!citationText) {
+        alert('No citation available to copy');
+        return;
+    }
+    
+    // Try to use the modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(citationText).then(() => {
+            showCopyFeedback(id);
+        }).catch(() => {
+            // Fallback to legacy method
+            fallbackCopy(citationText, id);
+        });
+    } else {
+        // Fallback to legacy method
+        fallbackCopy(citationText, id);
+    }
+}
+
+function fallbackCopy(text, id) {
+    // Create a temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+        document.execCommand('copy');
+        showCopyFeedback(id);
+    } catch (err) {
+        alert('Failed to copy citation. Please manually select and copy the text.');
+    }
+    
+    document.body.removeChild(textarea);
+}
+
+function showCopyFeedback(id) {
+    const button = document.querySelector(`button[onclick="copyCitation(${id})"]`);
+    if (button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅';
+        button.style.background = '#28a745';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+        }, 2000);
+    }
+}
+
+function updateStats() {
+    const total = papers.length;
+    const read = papers.filter(p => p.status === 'read').length;
+    const reading = papers.filter(p => p.status === 'reading').length;
+    const toRead = papers.filter(p => p.status === 'to-read').length;
+
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('readCount').textContent = read;
+    document.getElementById('readingCount').textContent = reading;
+    document.getElementById('toReadCount').textContent = toRead;
+}
+
+function exportToCSV() {
+    const headers = ['Title', 'Authors', 'Year', 'Journal/Venue', 'Keywords', 'Status', 'Priority', 'Rating', 'Date Added', 'Key Points', 'Notes', 'Citation', 'DOI/URL', 'Chapter/Topic'];
+    
+    const csvContent = [
+        headers.join(','),
+        ...papers.map(paper => [
+            `"${(paper.title || '').replace(/"/g, '""')}"`,
+            `"${(paper.authors || '').replace(/"/g, '""')}"`,
+            paper.year || '',
+            `"${(paper.journal || '').replace(/"/g, '""')}"`,
+            `"${(paper.keywords || '').replace(/"/g, '""')}"`,
+            paper.status || '',
+            paper.priority || '',
+            paper.rating || '',
+            paper.dateAdded || '',
+            `"${(paper.keyPoints || '').replace(/"/g, '""')}"`,
+            `"${(paper.notes || '').replace(/"/g, '""')}"`,
+            `"${(paper.citation || '').replace(/"/g, '""')}"`,
+            `"${(paper.doi || '').replace(/"/g, '""')}"`,
+            `"${(paper.chapter || '').replace(/"/g, '""')}"`,
+        ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `dissertation_papers_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        return;
+    }
+    
+    // Validate file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File is too large. Please select a file smaller than 10MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const csv = e.target.result;
+            const lines = csv.split('\n');
+            
+            let importCount = 0;
+            const maxRows = 1000; // Prevent memory issues
+            
+            for (let i = 1; i < Math.min(lines.length, maxRows + 1); i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                const values = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                if (values.length < 3) continue; // Minimum required fields
+                
+                const cleanValue = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
+                
+                const paper = {
+                    id: nextId++,
+                    title: cleanValue(values[0]).substring(0, 500),
+                    authors: cleanValue(values[1]).substring(0, 500),
+                    year: cleanValue(values[2]).substring(0, 4),
+                    journal: cleanValue(values[3]).substring(0, 300),
+                    keywords: cleanValue(values[4]).substring(0, 500),
+                    status: ['to-read', 'reading', 'read', 'skimmed'].includes(cleanValue(values[5])) ? cleanValue(values[5]) : 'to-read',
+                    priority: ['low', 'medium', 'high'].includes(cleanValue(values[6])) ? cleanValue(values[6]) : 'medium',
+                    rating: ['1','2','3','4','5'].includes(cleanValue(values[7])) ? cleanValue(values[7]) : '',
+                    dateAdded: cleanValue(values[8]) || new Date().toISOString().split('T')[0],
+                    keyPoints: cleanValue(values[9]).substring(0, 2000),
+                    notes: cleanValue(values[10]).substring(0, 1000),
+                    citation: cleanValue(values[11]).substring(0, 1000),
+                    doi: cleanValue(values[12]).substring(0, 500),
+                    chapter: cleanValue(values[13]).substring(0, 200)
+                };
+                
+                papers.push(paper);
+                importCount++;
+            }
+            
+            if (importCount > 0) {
+                renderTable();
+                updateStats();
+                showSummary();
+                alert(`Successfully imported ${importCount} papers`);
+            } else {
+                alert('No valid papers found in the CSV file');
+            }
+        } catch (error) {
+            alert('Error reading CSV file. Please check the file format');
+        }
+    };
+    
+    reader.onerror = function() {
+        alert('Error reading file');
+    };
+    
+    reader.readAsText(file);
 }
 
 // Smart input processing function
@@ -621,10 +835,10 @@ function addPaperFromPreview() {
         chapter: ""
     };
     
-        // Auto-generate citation
-    const apaCitation = formatAPA7Citation(newPaper);
-    if (apaCitation) {
-        newPaper.citation = apaCitation;
+    // Auto-generate citation
+    const citationData = formatAPA7CitationHTML(newPaper);
+    if (citationData.text) {
+        newPaper.citation = citationData.text;
     }
     
     papers.push(newPaper);
@@ -638,127 +852,6 @@ function addPaperFromPreview() {
     closePreviewModal();
     
     alert('Paper added successfully to your library!');
-}
-
-function updateStats() {
-    const total = papers.length;
-    const read = papers.filter(p => p.status === 'read').length;
-    const reading = papers.filter(p => p.status === 'reading').length;
-    const toRead = papers.filter(p => p.status === 'to-read').length;
-
-    document.getElementById('totalCount').textContent = total;
-    document.getElementById('readCount').textContent = read;
-    document.getElementById('readingCount').textContent = reading;
-    document.getElementById('toReadCount').textContent = toRead;
-}
-
-function exportToCSV() {
-    const headers = ['Title', 'Authors', 'Year', 'Journal/Venue', 'Keywords', 'Status', 'Priority', 'Rating', 'Date Added', 'Key Points', 'Notes', 'Citation', 'DOI/URL', 'Chapter/Topic'];
-    
-    const csvContent = [
-        headers.join(','),
-        ...papers.map(paper => [
-            `"${(paper.title || '').replace(/"/g, '""')}"`,
-            `"${(paper.authors || '').replace(/"/g, '""')}"`,
-            paper.year || '',
-            `"${(paper.journal || '').replace(/"/g, '""')}"`,
-            `"${(paper.keywords || '').replace(/"/g, '""')}"`,
-            paper.status || '',
-            paper.priority || '',
-            paper.rating || '',
-            paper.dateAdded || '',
-            `"${(paper.keyPoints || '').replace(/"/g, '""')}"`,
-            `"${(paper.notes || '').replace(/"/g, '""')}"`,
-            `"${(paper.citation || '').replace(/"/g, '""')}"`,
-            `"${(paper.doi || '').replace(/"/g, '""')}"`,
-            `"${(paper.chapter || '').replace(/"/g, '""')}"`,
-        ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `dissertation_papers_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-function importCSV(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-        alert('Please select a CSV file');
-        return;
-    }
-    
-    // Validate file size (limit to 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-        alert('File is too large. Please select a file smaller than 10MB');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const csv = e.target.result;
-            const lines = csv.split('\n');
-            
-            let importCount = 0;
-            const maxRows = 1000; // Prevent memory issues
-            
-            for (let i = 1; i < Math.min(lines.length, maxRows + 1); i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                
-                const values = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
-                if (values.length < 3) continue; // Minimum required fields
-                
-                const cleanValue = (val) => val ? val.replace(/^"|"$/g, '').trim() : '';
-                
-                const paper = {
-                    id: nextId++,
-                    title: cleanValue(values[0]).substring(0, 500),
-                    authors: cleanValue(values[1]).substring(0, 500),
-                    year: cleanValue(values[2]).substring(0, 4),
-                    journal: cleanValue(values[3]).substring(0, 300),
-                    keywords: cleanValue(values[4]).substring(0, 500),
-                    status: ['to-read', 'reading', 'read', 'skimmed'].includes(cleanValue(values[5])) ? cleanValue(values[5]) : 'to-read',
-                    priority: ['low', 'medium', 'high'].includes(cleanValue(values[6])) ? cleanValue(values[6]) : 'medium',
-                    rating: ['1','2','3','4','5'].includes(cleanValue(values[7])) ? cleanValue(values[7]) : '',
-                    dateAdded: cleanValue(values[8]) || new Date().toISOString().split('T')[0],
-                    keyPoints: cleanValue(values[9]).substring(0, 2000),
-                    notes: cleanValue(values[10]).substring(0, 1000),
-                    citation: cleanValue(values[11]).substring(0, 1000),
-                    doi: cleanValue(values[12]).substring(0, 500),
-                    chapter: cleanValue(values[13]).substring(0, 200)
-                };
-                
-                papers.push(paper);
-                importCount++;
-            }
-            
-            if (importCount > 0) {
-                renderTable();
-                updateStats();
-                showSummary();
-                alert(`Successfully imported ${importCount} papers`);
-            } else {
-                alert('No valid papers found in the CSV file');
-            }
-        } catch (error) {
-            alert('Error reading CSV file. Please check the file format');
-        }
-    };
-    
-    reader.onerror = function() {
-        alert('Error reading file');
-    };
-    
-    reader.readAsText(file);
 }
 
 // Initialize the application
