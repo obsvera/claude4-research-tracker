@@ -179,6 +179,8 @@ function batchUpdates(id = null) {
             // Save after UI updates
             storage.save();
             errorCount = 0;
+            // Actually save to localStorage
+            storage.save();
         } catch (error) {
             handleError(error, 'batchUpdates');
         }
