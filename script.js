@@ -2,6 +2,10 @@
 // Global variables - store data in JavaScript memory
 let papers = [];
 let nextId = 1;
+let batchUpdateTimeout = null;
+let errorCount = 0;
+const MAX_ERRORS = 3;
+const STORAGE_KEY = 'research-tracker-data-v1';
 
 // Summary function
 function showSummary() {
@@ -97,112 +101,156 @@ function showSummary() {
 
 // Paper management functions
 function addRow() {
-    const newPaper = {
-        id: nextId++,
-        title: "",
-        authors: "",
-        year: "",
-        journal: "",
-        keywords: "",
-        status: "to-read",
-        priority: "medium",
-        rating: "",
-        dateAdded: new Date().toISOString().split('T')[0],
-        keyPoints: "",
-        notes: "",
-        citation: "",
-        doi: "",
-        chapter: ""
-    };
-    papers.push(newPaper);
-    renderTable();
-    updateStats();
-    showSummary();
+    try {
+        const newPaper = {
+            id: nextId++,
+            title: "",
+            authors: "",
+            year: "",
+            journal: "",
+            keywords: "",
+            status: "to-read",
+            priority: "medium",
+            rating: "",
+            dateAdded: new Date().toISOString().split('T')[0],
+            keyPoints: "",
+            notes: "",
+            citation: "",
+            doi: "",
+            chapter: ""
+        };
+        papers.push(newPaper);
+        batchUpdates();
+    } catch (error) {
+        handleError(error, 'addRow');
+    }
 }
 
 function deleteRow(id) {
-    const paperToDelete = papers.find(p => p.id === id);
-    if (!paperToDelete) return;
-    
-    if (confirm(`Delete "${paperToDelete.title || 'Untitled Paper'}"?`)) {
-        papers = papers.filter(paper => paper.id !== id);
-        renderTable();
-        updateStats();
-        showSummary();
+    try {
+        const paperToDelete = papers.find(p => p.id === id);
+        if (!paperToDelete) throw new Error(`Paper with id ${id} not found`);
+        
+        if (confirm(`Delete "${paperToDelete.title || 'Untitled Paper'}"?`)) {
+            papers = papers.filter(paper => paper.id !== id);
+            batchUpdates();
+        }
+    } catch (error) {
+        handleError(error, 'deleteRow');
     }
 }
 
 function clearData() {
-    if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-        papers = [];
-        nextId = 1;
-        renderTable();
-        updateStats();
-        showSummary();
+    try {
+        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            papers = [];
+            nextId = 1;
+            storage.clear();
+            batchUpdates();
+        }
+    } catch (error) {
+        handleError(error, 'clearData');
     }
 }
 
-function updatePaper(id, field, value) {
-    const paper = papers.find(p => p.id === id);
-    if (!paper) return;
+// Add error handling utility
+function handleError(error, context) {
+    console.error(`Error in ${context}:`, error);
+    errorCount++;
     
-    // Input validation and sanitization
-    const sanitizeInput = (input, maxLength = 1000) => {
-        if (typeof input !== 'string') return '';
-        return input.trim().substring(0, maxLength);
-    };
-    
-    const validateField = (fieldName, fieldValue) => {
-        switch (fieldName) {
-            case 'year':
-                const yearNum = parseInt(fieldValue);
-                return (!isNaN(yearNum) && yearNum >= 1000 && yearNum <= 2030) ? yearNum.toString() : '';
-            case 'rating':
-                const ratingNum = parseInt(fieldValue);
-                return (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) ? ratingNum.toString() : '';
-            case 'status':
-                return ['to-read', 'reading', 'read', 'skimmed'].includes(fieldValue) ? fieldValue : 'to-read';
-            case 'priority':
-                return ['low', 'medium', 'high'].includes(fieldValue) ? fieldValue : 'medium';
-            case 'doi':
-                // Basic URL/DOI validation
-                if (!fieldValue) return '';
-                try {
-                    if (fieldValue.startsWith('http://') || fieldValue.startsWith('https://')) {
-                        new URL(fieldValue); // Validates URL format
-                        return sanitizeInput(fieldValue, 500);
-                    } else if (fieldValue.match(/^10\.\d{4,}/)) {
-                        return sanitizeInput(fieldValue, 200);
-                    } else {
-                        return sanitizeInput(fieldValue, 500);
-                    }
-                } catch {
-                    return sanitizeInput(fieldValue, 500);
-                }
-            default:
-                return sanitizeInput(fieldValue);
-        }
-    };
-    
-    const sanitizedValue = validateField(field, value);
-    paper[field] = sanitizedValue;
-    
-    // Auto-format citation when key fields are updated
-    if (['title', 'authors', 'year', 'journal'].includes(field)) {
-        const citationData = formatAPA7CitationHTML(paper);
-        if (citationData.text) {
-            paper.citation = citationData.text;
-            const citationDiv = document.querySelector(`div[data-citation-id="${id}"]`);
-            if (citationDiv) {
-                citationDiv.innerHTML = citationData.html || citationData.text;
-                citationDiv.setAttribute('data-citation-text', citationData.text);
-            }
-        }
+    if (errorCount >= MAX_ERRORS) {
+        // Show user-friendly error message after multiple failures
+        alert('Something went wrong. Please refresh the page and try again.');
+        errorCount = 0;
+    }
+}
+
+// Add batched update function
+function batchUpdates(id = null) {
+    if (batchUpdateTimeout) {
+        cancelAnimationFrame(batchUpdateTimeout);
     }
     
-    updateStats();
-    setTimeout(() => updateRowStyling(id), 0);
-    showSummary();
+    batchUpdateTimeout = requestAnimationFrame(() => {
+        try {
+            if (id) updateRowStyling(id);
+            updateStats();
+            showSummary();
+            // Save after UI updates
+            storage.save();
+            errorCount = 0;
+        } catch (error) {
+            handleError(error, 'batchUpdates');
+        }
+    });
+}
+
+// Update the updatePaper function to use batched updates
+function updatePaper(id, field, value) {
+    try {
+        const paper = papers.find(p => p.id === id);
+        if (!paper) throw new Error(`Paper with id ${id} not found`);
+        
+        // Input validation and sanitization
+        const sanitizeInput = (input, maxLength = 1000) => {
+            if (typeof input !== 'string') return '';
+            return input.trim().substring(0, maxLength);
+        };
+        
+        const validateField = (fieldName, fieldValue) => {
+            switch (fieldName) {
+                case 'year':
+                    const yearNum = parseInt(fieldValue);
+                    return (!isNaN(yearNum) && yearNum >= 1000 && yearNum <= 2030) ? yearNum.toString() : '';
+                case 'rating':
+                    const ratingNum = parseInt(fieldValue);
+                    return (!isNaN(ratingNum) && ratingNum >= 1 && ratingNum <= 5) ? ratingNum.toString() : '';
+                case 'status':
+                    return ['to-read', 'reading', 'read', 'skimmed'].includes(fieldValue) ? fieldValue : 'to-read';
+                case 'priority':
+                    return ['low', 'medium', 'high'].includes(fieldValue) ? fieldValue : 'medium';
+                case 'doi':
+                    // Basic URL/DOI validation
+                    if (!fieldValue) return '';
+                    try {
+                        if (fieldValue.startsWith('http://') || fieldValue.startsWith('https://')) {
+                            new URL(fieldValue); // Validates URL format
+                            return sanitizeInput(fieldValue, 500);
+                        } else if (fieldValue.match(/^10\.\d{4,}/)) {
+                            return sanitizeInput(fieldValue, 200);
+                        } else {
+                            return sanitizeInput(fieldValue, 500);
+                        }
+                    } catch {
+                        return sanitizeInput(fieldValue, 500);
+                    }
+                default:
+                    return sanitizeInput(fieldValue);
+            }
+        };
+        
+        const sanitizedValue = validateField(field, value);
+        paper[field] = sanitizedValue;
+        
+        // Auto-format citation when key fields are updated
+        if (['title', 'authors', 'year', 'journal'].includes(field)) {
+            const citationData = formatAPA7CitationHTML(paper);
+            if (citationData.text) {
+                paper.citation = citationData.text;
+                const citationDiv = document.querySelector(`div[data-citation-id="${id}"]`);
+                if (citationDiv) {
+                    citationDiv.innerHTML = citationData.html || citationData.text;
+                    citationDiv.setAttribute('data-citation-text', citationData.text);
+                }
+            }
+        }
+        
+        // Replace multiple update calls with single batched update
+        batchUpdates(id);
+        
+    } catch (error) {
+        handleError(error, 'updatePaper');
+    }
 }
 
 function updateRowStyling(id) {
@@ -920,9 +968,85 @@ function addPaperFromPreview() {
     alert('Paper added successfully to your library!');
 }
 
+// Storage utilities
+const storage = {
+    save() {
+        try {
+            const data = {
+                papers: papers,
+                nextId: nextId,
+                lastModified: new Date().toISOString()
+            };
+            // Validate before saving
+            if (!Array.isArray(data.papers) || typeof data.nextId !== 'number') {
+                throw new Error('Invalid data structure');
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (error) {
+            handleError(error, 'storage.save');
+        }
+    },
+
+    load() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) return false;
+
+            const data = JSON.parse(stored);
+            
+            // Validate structure
+            if (!Array.isArray(data.papers) || typeof data.nextId !== 'number') {
+                throw new Error('Corrupted data structure');
+            }
+
+            // Sanitize loaded data
+            papers = data.papers.map(p => ({
+                id: Number(p.id) || nextId++,
+                title: String(p.title || '').slice(0, 500),
+                authors: String(p.authors || '').slice(0, 500),
+                year: String(p.year || '').slice(0, 4),
+                journal: String(p.journal || '').slice(0, 300),
+                keywords: String(p.keywords || '').slice(0, 500),
+                status: ['to-read', 'reading', 'read', 'skimmed'].includes(p.status) ? p.status : 'to-read',
+                priority: ['low', 'medium', 'high'].includes(p.priority) ? p.priority : 'medium',
+                rating: ['1','2','3','4','5'].includes(p.rating) ? p.rating : '',
+                dateAdded: p.dateAdded || new Date().toISOString().split('T')[0],
+                keyPoints: String(p.keyPoints || '').slice(0, 2000),
+                notes: String(p.notes || '').slice(0, 1000),
+                citation: String(p.citation || '').slice(0, 1000),
+                doi: String(p.doi || '').slice(0, 500),
+                chapter: String(p.chapter || '').slice(0, 200)
+            }));
+            
+            // Ensure nextId is higher than any existing id
+            nextId = Math.max(data.nextId, ...papers.map(p => p.id) + 1);
+            return true;
+
+        } catch (error) {
+            handleError(error, 'storage.load');
+            return false;
+        }
+    },
+
+    clear() {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+            handleError(error, 'storage.clear');
+        }
+    }
+};
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    // Start with empty tracker
+    if (storage.load()) {
+        console.log('Loaded saved research data');
+    }
     updateStats();
     showSummary();
+});
+window.addEventListener('unload', () => {
+    if (batchUpdateTimeout) {
+        cancelAnimationFrame(batchUpdateTimeout);
+    }
 });
