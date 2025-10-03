@@ -132,11 +132,24 @@ function deleteRow(id) {
         if (!paperToDelete) throw new Error(`Paper with id ${id} not found`);
         
         if (confirm(`Delete "${paperToDelete.title || 'Untitled Paper'}"?`)) {
+            // Remove the paper from the array
             papers = papers.filter(paper => paper.id !== id);
-            storage.save(); // Save immediately after deletion
-            renderTable();
+            
+            // First update the table
+            const tbody = document.getElementById('paperTableBody');
+            if (tbody) {
+                const rowToRemove = tbody.querySelector(`tr[data-id="${id}"]`);
+                if (rowToRemove) {
+                    rowToRemove.remove();
+                }
+            }
+            
+            // Update everything else
             updateStats();
             showSummary();
+            
+            // Save to localStorage
+            storage.save();
         }
     } catch (error) {
         handleError(error, 'deleteRow');
