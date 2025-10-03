@@ -133,7 +133,10 @@ function deleteRow(id) {
         
         if (confirm(`Delete "${paperToDelete.title || 'Untitled Paper'}"?`)) {
             papers = papers.filter(paper => paper.id !== id);
-            batchUpdates();
+            storage.save(); // Save immediately after deletion
+            renderTable();
+            updateStats();
+            showSummary();
         }
     } catch (error) {
         handleError(error, 'deleteRow');
@@ -145,8 +148,10 @@ function clearData() {
         if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
             papers = [];
             nextId = 1;
-            storage.clear();
-            batchUpdates();
+            localStorage.removeItem(STORAGE_KEY);
+            renderTable();
+            updateStats();
+            showSummary();
         }
     } catch (error) {
         handleError(error, 'clearData');
