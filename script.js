@@ -984,6 +984,8 @@ const storage = {
                 throw new Error('Invalid data structure');
             }
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            // Ensure table is rendered after saving
+            renderTable();
         } catch (error) {
             handleError(error, 'storage.save');
         }
@@ -1043,6 +1045,8 @@ const storage = {
 document.addEventListener('DOMContentLoaded', function() {
     if (storage.load()) {
         console.log('Loaded saved research data');
+        // Ensure table is rendered when data is loaded
+        renderTable();
     }
     updateStats();
     showSummary();
@@ -1051,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Save data before tab/window closes
 window.addEventListener('beforeunload', () => {
     if (papers.length > 0) {
+        // Force immediate save
         storage.save();
     }
 });
