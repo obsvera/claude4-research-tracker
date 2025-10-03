@@ -1047,8 +1047,20 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStats();
     showSummary();
 });
+
+// Save data before tab/window closes
+window.addEventListener('beforeunload', () => {
+    if (papers.length > 0) {
+        storage.save();
+    }
+});
+
 window.addEventListener('unload', () => {
     if (batchUpdateTimeout) {
         cancelAnimationFrame(batchUpdateTimeout);
+    }
+    // Final attempt to save data
+    if (papers.length > 0) {
+        storage.save();
     }
 });
